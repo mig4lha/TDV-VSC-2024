@@ -2,9 +2,12 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
+using System.Text;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace VSC
 {
@@ -12,40 +15,31 @@ namespace VSC
     {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
-        private bool _isHandlingResize = false;
 
         private int[,] tileMap; // Variable to store the loaded tile map
 
-        private Texture2D floor_tile;
-        private Texture2D floor_tile2;
-        private Texture2D floor_tile3;
-        private Texture2D floor_tile4;
-        private Texture2D wall_top_tile;
-        private Texture2D wall_bottom_tile;
-        private Texture2D wall_left_tile;
-        private Texture2D wall_right_tile;
-        private Texture2D wall_right_corner_tile;
-        private Texture2D wall_left_corner_tile;
-        private Texture2D empty_tile;
+        public static Texture2D floor_tile;
+        public static Texture2D floor_tile2;
+        public static Texture2D floor_tile3;
+        public static Texture2D floor_tile4;
+        public static Texture2D wall_top_tile;
+        public static Texture2D square_player_spawn;
+        private Texture2D player_sprite;
+        public static Texture2D empty_tile;
+        private Texture2D customCursorTexture;
 
-        private float tile_scale_factor = 2.0f;
+        private SpriteFont testFont;
 
-        //private int[,] tileMap = new int[Globals.MapWidth, Globals.MapHeight]
-        //{
-        //    // Example tile map data (IDs)
-        //    { 7, 2, 2, 2, 2, 2, 2, 2, 2, 3 }, 
-        //    { 7, 1, 1, 1, 1, 1, 1, 1, 1, 3 }, 
-        //    { 7, 1, 1, 1, 1, 1, 1, 1, 1, 3 }, 
-        //    { 7, 1, 1, 1, 1, 1, 1, 1, 1, 3 }, 
-        //    { 7, 1, 1, 1, 1, 1, 1, 1, 1, 3 }, 
-        //    { 7, 1, 1, 1, 1, 1, 1, 1, 1, 3 }, 
-        //    { 7, 1, 1, 1, 1, 1, 1, 1, 1, 3 }, 
-        //    { 7, 1, 1, 1, 1, 1, 1, 1, 1, 3 }, 
-        //    { 7, 1, 1, 1, 1, 1, 1, 1, 1, 3 }, 
-        //    { 6, 5, 5, 5, 5, 5, 5, 5, 5, 4 }  
-        //};
+        private List<Collision> collisionObjects;
 
-        private Texture2D[,] selectedFloorTextures;
+        private Player player;
+
+        private Vector2 playerStartPosition;
+
+        private bool playerSpawn = false;
+
+        private bool wasRKeyPressed = false;
+        private bool wasF3Pressed = false;
 
         public Game1()
         {
@@ -55,15 +49,33 @@ namespace VSC
             _graphics.IsFullScreen = true;
             _graphics.PreferredBackBufferWidth = 1920;
             _graphics.PreferredBackBufferHeight = 1080;
-            _graphics.ApplyChanges();
-            Window.AllowUserResizing = true;
 
-            LoadMapFromFile("level1.txt");
+            IsFixedTimeStep = false; // Remove FPS cap
+            _graphics.SynchronizeWithVerticalRetrace = false; // Disable vsync
+
+            _graphics.ApplyChanges();
+
+            tileMap = MapLoader.LoadMapFromFile("level1.txt");
+
+            // Placeholder position of the player
+            playerStartPosition = new Vector2(100, 100);
+
+            // LoadContent before initializing player object so the texture is loaded
+            LoadContent();
+
+            player = new Player(player_sprite, playerStartPosition);
+
+            collisionObjects = Collision.CreateCollisionObjects(GraphicsDevice,tileMap);
         }
 
         protected override void Initialize()
         {
-            selectedFloorTextures = new Texture2D[Globals.MapWidth, Globals.MapHeight];
+            Utils.selectedFloorTextures = new Texture2D[Globals.MapWidth, Globals.MapHeight];
+
+            MouseCursor customCursor = Utils.ScaleCursorTexture(GraphicsDevice, customCursorTexture, Globals.cursor_texture_scale_factor);
+
+            // Set the custom cursor
+            Mouse.SetCursor(customCursor);
 
             base.Initialize();
         }
@@ -76,35 +88,62 @@ namespace VSC
             floor_tile3 = Content.Load<Texture2D>("floor_tile3");
             floor_tile4 = Content.Load<Texture2D>("floor_tile4");
             wall_top_tile = Content.Load<Texture2D>("wall_top_tile");
-            wall_bottom_tile = Content.Load<Texture2D>("wall_bottom_tile");
-            wall_left_tile = Content.Load<Texture2D>("wall_left_tile");
-            wall_right_tile = Content.Load<Texture2D>("wall_right_tile");
-            wall_right_corner_tile = Content.Load<Texture2D>("wall_right_corner_tile");
-            wall_left_corner_tile = Content.Load<Texture2D>("wall_left_corner_tile");
+            square_player_spawn = Content.Load<Texture2D>("square_player_spawn");
             empty_tile = Content.Load<Texture2D>("empty_tile");
-        }
+            player_sprite = Content.Load<Texture2D>("priest1_v1_1");
 
-        private void LoadMapFromFile(string fileName)
-        {
-            string workingDirectory = Environment.CurrentDirectory;
-            // Get the current directory
-            string currentDirectory = Directory.GetParent(workingDirectory).Parent.Parent.FullName;
+            testFont = Content.Load<SpriteFont>("TestFont");
 
-            // Combine the current directory with the relative path to the maps directory and the specific level file name
-            string filePath = Path.Combine(currentDirectory, "maps", fileName);
-
-            // Create an instance of MapLoader
-            MapLoader mapLoader = new MapLoader();
-
-            // Load the map from the file
-            tileMap = mapLoader.LoadMap(filePath);
-            Console.WriteLine(tileMap);
+            customCursorTexture = Content.Load<Texture2D>("cursor");
         }
 
         protected override void Update(GameTime gameTime)
         {
+            Utils.UpdateFPS(gameTime);
+
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
+
+            // Check if the "R" key is pressed
+            bool isRKeyPressed = Keyboard.GetState().IsKeyDown(Keys.R);
+
+            // Restart player position if "R" key is released and was pressed in the previous frame
+            if (wasRKeyPressed && !isRKeyPressed)
+            {
+                // Reset player position to the spawn location
+                player.Position = playerStartPosition;
+            }
+
+            // Update the variable for the next frame
+            wasRKeyPressed = isRKeyPressed;
+
+            KeyboardState keyboardState = Keyboard.GetState();
+
+            // Check if F3 key is pressed and was not pressed in the previous frame
+            if (keyboardState.IsKeyDown(Keys.F3) && !wasF3Pressed)
+            {
+                // Toggle debug menu visibility
+                Globals.debugMenuVisible = !Globals.debugMenuVisible;
+            }
+
+            // Update the flag to track F3 key press
+            wasF3Pressed = keyboardState.IsKeyDown(Keys.F3);
+
+            // Store the player's current position
+            Vector2 currentPlayerPosition = player.Position;
+
+            // Update the player
+            player.Update(gameTime);
+
+            // Check for collisions between the player and walls
+            foreach (Collision collisionObject in collisionObjects)
+            {
+                if (Collision.CollidesWithCircle(player.GetBounds(), collisionObject.GetBounds()))
+                {
+                    // Reset player position to the last valid position
+                    player.Position = currentPlayerPosition;
+                }
+            }
 
             base.Update(gameTime);
         }
@@ -115,88 +154,50 @@ namespace VSC
             GraphicsDevice.Clear(backgroundColor);
 
             // Calculate offset to center the map on the screen
-            int offsetX = (GraphicsDevice.Viewport.Width - (Globals.MapWidth * Globals.TileWidth * (int)Globals.tile_scale_factor)) / 2;
-            int offsetY = (GraphicsDevice.Viewport.Height - (Globals.MapHeight * Globals.TileHeight * (int)Globals.tile_scale_factor)) / 2;
+            int offsetX = (GraphicsDevice.Viewport.Width - (Globals.MapWidth * Globals.TileWidth * (int)Globals.texture_scale_factor)) / 2;
+            int offsetY = (GraphicsDevice.Viewport.Height - (Globals.MapHeight * Globals.TileHeight * (int)Globals.texture_scale_factor)) / 2;
 
             _spriteBatch.Begin();
+
+            //_spriteBatch.DrawString(testFont, "FPS: " + Utils.FPS.ToString("0.00"), new Vector2(10, 10), Color.White);
 
             // Draw the tile map
             for (int x = 0; x < Globals.MapWidth; x++)
             {
                 for (int y = 0; y < Globals.MapHeight; y++)
                 {
-                    Vector2 position = new Vector2(offsetX + x * Globals.TileWidth * Globals.tile_scale_factor, offsetY + y * Globals.TileHeight * Globals.tile_scale_factor);
+                    Vector2 position = new Vector2(offsetX + x * Globals.TileWidth * Globals.texture_scale_factor, offsetY + y * Globals.TileHeight * Globals.texture_scale_factor);
 
                     int tileType = tileMap[x, y];
 
-                    Texture2D tileTexture = GetTextureForTileType(tileType, x, y);
+                    Texture2D tileTexture = Utils.GetTextureForTileType(tileType, x, y);
 
                     // Draw the tile with scaling applied
-                    _spriteBatch.Draw(tileTexture, position, null, Color.White, 0f, Vector2.Zero, Globals.tile_scale_factor, SpriteEffects.None, 0f);
+                    _spriteBatch.Draw(tileTexture, position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+
+                    if (tileType == 3 && playerSpawn == false) // Assuming tileType 3 represents the tile where the player should be drawn
+                    {
+                        playerStartPosition = new Vector2(position.X + 1, position.Y);
+                        // Calculate player position on top of this tile
+                        player.Position = new Vector2(position.X + 1, position.Y);
+                        playerSpawn = true;
+                    }
                 }
             }
 
+            // Draw the player
+            player.Draw(_spriteBatch);
+
             _spriteBatch.End();
+
+            // Draw debug menu if visible
+            if (Globals.debugMenuVisible)
+            {
+                Utils.DrawDebugMenu(_spriteBatch, testFont, collisionObjects, GraphicsDevice, player);
+            }
 
             base.Draw(gameTime);
         }
-
-
-        private Texture2D GetTextureForTileType(int tileType, int x, int y)
-        {
-            switch (tileType)
-            {
-                case 1: // Floor tile
-                        // If the selected floor texture for this tile has not been chosen yet
-                    if (selectedFloorTextures[x, y] == null)
-                    {
-                        // Seed the random number generator with a value based on the map's size and position
-                        int seed = x * Globals.MapWidth + y; // Formula for the seed using the map width and height
-                        Random localRandom = new Random(seed);
-
-                        // Randomly select one of the floor tile textures
-                        int randomFloorTile = localRandom.Next(1, 5); // Random number between 1 and 4
-                        switch (randomFloorTile)
-                        {
-                            case 1:
-                                selectedFloorTextures[x, y] = floor_tile;
-                                break;
-                            case 2:
-                                selectedFloorTextures[x, y] = floor_tile2;
-                                break;
-                            case 3:
-                                selectedFloorTextures[x, y] = floor_tile3;
-                                break;
-                            case 4:
-                                selectedFloorTextures[x, y] = floor_tile4;
-                                break;
-                            default:
-                                selectedFloorTextures[x, y] = floor_tile;
-                                break;
-                        }
-                    }
-                    return selectedFloorTextures[x, y];
-                case 2: // Top wall
-                    return wall_top_tile;
-                //case 3: // Bottom wall
-                //    return wall_bottom_tile;
-                //case 4: // Left wall
-                //    return wall_left_tile;
-                //case 5: // Right wall
-                //    return wall_right_tile;
-                //case 6: // Top Left Corner wall
-                //    return wall_left_tile;
-                //case 7: // Top Right wall
-                //    return wall_right_tile;
-                //case 8: // Bottom Left wall
-                //    return wall_left_corner_tile;
-                //case 9: // Bottom Right wall
-                //    return wall_right_corner_tile;
-                default:
-                    return empty_tile;
-            }
-        }
-
 
     }
 }
