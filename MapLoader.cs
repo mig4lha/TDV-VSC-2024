@@ -9,6 +9,8 @@ namespace VSC
 {
     public class MapLoader
     {
+        private static int[,] tileMap;
+
         public int[,] LoadMap(string filePath)
         {
             // Default tile map with dimensions 1x1
@@ -42,6 +44,9 @@ namespace VSC
                             case 'w': // Wall
                                 tileType = 2;
                                 break;
+                            case 'p': // Wall
+                                tileType = 3;
+                                break;
                             case 'f': // Floor
                                 tileType = 1;
                                 break;
@@ -67,6 +72,24 @@ namespace VSC
 
             // Return the default tile map if an error occurred
             return defaultTileMap;
+        }
+
+        public static int[,] LoadMapFromFile(string fileName)
+        {
+            string workingDirectory = Environment.CurrentDirectory;
+            // Get the current directory
+            string currentDirectory = Directory.GetParent(workingDirectory).Parent.Parent.FullName;
+
+            // Combine the current directory with the relative path to the maps directory and the specific level file name
+            string filePath = Path.Combine(currentDirectory, "maps", fileName);
+
+            // Create an instance of MapLoader
+            MapLoader mapLoader = new MapLoader();
+
+            // Load the map from the file
+            tileMap = mapLoader.LoadMap(filePath);
+
+            return tileMap;
         }
     }
 

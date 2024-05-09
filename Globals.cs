@@ -16,7 +16,10 @@ namespace VSC
         public const int TileWidth = 16;
         public const int TileHeight = 16;
 
-        public static float _scaleSprites = 2.5f; // Scale factor
-        public static float tile_scale_factor = 2.0f;
+        public static float texture_scale_factor = 3.0f;
+
+        public static float cursor_texture_scale_factor = 3.0f;
+
+        public static bool debugMenuVisible = true;
     }
 }
