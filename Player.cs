@@ -16,6 +16,9 @@ namespace VSC
         // Player position
         public Vector2 Position { get; set; }
 
+        public float ProjectileSpeed { get; set; }
+        public float ProjectileFireRate { get; set; }
+
         // Player texture
         private Texture2D texture;
 
@@ -27,6 +30,9 @@ namespace VSC
         {
             this.texture = texture;
             Position = position;
+
+            ProjectileSpeed = 30f;
+            ProjectileFireRate = 0.5f;
         }
 
         // Update method

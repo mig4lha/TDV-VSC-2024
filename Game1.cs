@@ -26,11 +26,15 @@ namespace VSC
         public static Texture2D square_player_spawn;
         private Texture2D player_sprite;
         public static Texture2D empty_tile;
+        public static Texture2D projectileTexture;
         private Texture2D customCursorTexture;
+        private float timeSinceLastShot = 0f;
 
         private SpriteFont testFont;
 
         private List<Collision> collisionObjects;
+
+        List<Projectile> projectiles = new List<Projectile>();
 
         private Player player;
 
@@ -91,6 +95,7 @@ namespace VSC
             square_player_spawn = Content.Load<Texture2D>("square_player_spawn");
             empty_tile = Content.Load<Texture2D>("empty_tile");
             player_sprite = Content.Load<Texture2D>("priest1_v1_1");
+            projectileTexture = Content.Load<Texture2D>("projectile");
 
             testFont = Content.Load<SpriteFont>("TestFont");
 
@@ -145,6 +150,39 @@ namespace VSC
                 }
             }
 
+            // Calculate time elapsed since last shot
+            timeSinceLastShot += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Detect mouse left click and check if enough time has passed since last shot
+            MouseState mouseState = Mouse.GetState();
+            if (mouseState.LeftButton == ButtonState.Pressed && timeSinceLastShot >= player.ProjectileFireRate)
+            {
+                Vector2 projectilePosition = player.Position;
+                projectilePosition.X += 16;
+                projectilePosition.Y += 16;
+
+                // Calculate direction towards cursor
+                Vector2 direction = new Vector2(mouseState.X, mouseState.Y) - projectilePosition;
+                direction.Normalize();
+
+                // Create projectile at player position with velocity in the calculated direction
+                Vector2 projectileVelocity = direction * player.ProjectileSpeed;
+                projectiles.Add(new Projectile(projectileTexture, projectilePosition, projectileVelocity));
+
+                // Reset time since last shot
+                timeSinceLastShot = 0f;
+            }
+
+            // Update projectiles
+            foreach (Projectile projectile in projectiles)
+            {
+                projectile.Update();
+            }
+
+            // Remove projectiles if they move beyond a certain radius from the player
+            float maxDistanceSquared =  Projectile.DespawnDistance * Projectile.DespawnDistance; // 500px radius
+            projectiles.RemoveAll(p => Vector2.DistanceSquared(p.Position, player.Position) > maxDistanceSquared);
+
             base.Update(gameTime);
         }
 
@@ -187,6 +225,11 @@ namespace VSC
 
             // Draw the player
             player.Draw(_spriteBatch);
+
+            foreach (Projectile projectile in projectiles)
+            {
+                projectile.Draw(_spriteBatch);
+            }
 
             _spriteBatch.End();
 
