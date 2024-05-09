@@ -21,5 +21,7 @@ namespace VSC
         public static float cursor_texture_scale_factor = 3.0f;
 
         public static bool debugMenuVisible = true;
+
+        public static float player_momentum_projectile_factor = 0.2f;
     }
 }

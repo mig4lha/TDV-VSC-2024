@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -29,6 +30,8 @@ namespace VSC
         public static Texture2D projectileTexture;
         private Texture2D customCursorTexture;
         private float timeSinceLastShot = 0f;
+
+        private Camera camera;
 
         private SpriteFont testFont;
 
@@ -59,7 +62,7 @@ namespace VSC
 
             _graphics.ApplyChanges();
 
-            tileMap = MapLoader.LoadMapFromFile("level1.txt");
+            tileMap = MapLoader.LoadMapFromFile("level1_Big.txt");
 
             // Placeholder position of the player
             playerStartPosition = new Vector2(100, 100);
@@ -80,6 +83,9 @@ namespace VSC
 
             // Set the custom cursor
             Mouse.SetCursor(customCursor);
+
+            // Initialize camera with starting position
+            camera = new Camera(GraphicsDevice, Vector2.Zero);
 
             base.Initialize();
         }
@@ -104,6 +110,9 @@ namespace VSC
 
         protected override void Update(GameTime gameTime)
         {
+            // Get the elapsed time since the last frame
+            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
             Utils.UpdateFPS(gameTime);
 
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
@@ -134,10 +143,9 @@ namespace VSC
             // Update the flag to track F3 key press
             wasF3Pressed = keyboardState.IsKeyDown(Keys.F3);
 
-            // Store the player's current position
-            Vector2 currentPlayerPosition = player.Position;
+            // Store the player's current position relative to the camera
+            Vector2 currentPlayerPosition = player.Position - camera.Position;
 
-            // Update the player
             player.Update(gameTime);
 
             // Check for collisions between the player and walls
@@ -146,7 +154,9 @@ namespace VSC
                 if (Collision.CollidesWithCircle(player.GetBounds(), collisionObject.GetBounds()))
                 {
                     // Reset player position to the last valid position
-                    player.Position = currentPlayerPosition;
+                    player.Position = currentPlayerPosition + camera.Position;
+                    // Update the player's bounds to match the corrected position
+                    player.Update(gameTime);
                 }
             }
 
@@ -162,26 +172,55 @@ namespace VSC
                 projectilePosition.Y += 16;
 
                 // Calculate direction towards cursor
-                Vector2 direction = new Vector2(mouseState.X, mouseState.Y) - projectilePosition;
-                direction.Normalize();
+                Vector2 directionToCursor = new Vector2(mouseState.X, mouseState.Y) - projectilePosition;
+                directionToCursor.Normalize();
+
+                // Calculate player's forward direction (facing the cursor)
+                Vector2 playerDirection = directionToCursor;
+
+                // Incorporate player's momentum into the forward direction
+                if (player.Velocity.LengthSquared() > 0)
+                {
+                    playerDirection += Vector2.Normalize(player.Velocity) * Globals.player_momentum_projectile_factor; // Adjust the factor as needed
+                }
+
+                // Normalize the player's forward direction
+                playerDirection.Normalize();
 
                 // Create projectile at player position with velocity in the calculated direction
-                Vector2 projectileVelocity = direction * player.ProjectileSpeed;
+                Vector2 projectileVelocity = playerDirection * player.ProjectileSpeed;
                 projectiles.Add(new Projectile(projectileTexture, projectilePosition, projectileVelocity));
 
                 // Reset time since last shot
                 timeSinceLastShot = 0f;
             }
 
+
+
             // Update projectiles
-            foreach (Projectile projectile in projectiles)
+            foreach (Projectile projectile in projectiles.ToList())
             {
-                projectile.Update();
+                projectile.Update(deltaTime);
+
+                // Check for collision with other objects or bounds
+                foreach (Collision collisionObject in collisionObjects)
+                {
+                    if (Collision.CollidesWithCircle(projectile.Bounds, collisionObject.Bounds))
+                    {
+                        // Handle collision
+                        // For example: remove the projectile from the list
+                        projectiles.Remove(projectile);
+                        break; // No need to check for collision with other objects
+                    }
+                }
             }
 
             // Remove projectiles if they move beyond a certain radius from the player
             float maxDistanceSquared =  Projectile.DespawnDistance * Projectile.DespawnDistance; // 500px radius
             projectiles.RemoveAll(p => Vector2.DistanceSquared(p.Position, player.Position) > maxDistanceSquared);
+
+            // Update camera to follow player
+            camera.Follow(player.Position);
 
             base.Update(gameTime);
         }
@@ -194,8 +233,11 @@ namespace VSC
             // Calculate offset to center the map on the screen
             int offsetX = (GraphicsDevice.Viewport.Width - (Globals.MapWidth * Globals.TileWidth * (int)Globals.texture_scale_factor)) / 2;
             int offsetY = (GraphicsDevice.Viewport.Height - (Globals.MapHeight * Globals.TileHeight * (int)Globals.texture_scale_factor)) / 2;
+            offsetX = 0;
+            offsetY = 0;
 
-            _spriteBatch.Begin();
+            // Begin drawing with camera's transform matrix
+            _spriteBatch.Begin(transformMatrix: camera.TransformMatrix);
 
             //_spriteBatch.DrawString(testFont, "FPS: " + Utils.FPS.ToString("0.00"), new Vector2(10, 10), Color.White);
 
@@ -236,7 +278,7 @@ namespace VSC
             // Draw debug menu if visible
             if (Globals.debugMenuVisible)
             {
-                Utils.DrawDebugMenu(_spriteBatch, testFont, collisionObjects, GraphicsDevice, player);
+                Utils.DrawDebugMenu(_spriteBatch, testFont, collisionObjects, GraphicsDevice, player, projectiles, camera);
             }
 
             base.Draw(gameTime);

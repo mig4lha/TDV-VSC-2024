@@ -41,7 +41,7 @@ namespace VSC
             }
         }
 
-        public static void DrawDebugMenu(SpriteBatch _spriteBatch, SpriteFont spriteFont, List<Collision> collisionObjects, GraphicsDevice _graphics, Player player)
+        public static void DrawDebugMenu(SpriteBatch _spriteBatch, SpriteFont spriteFont, List<Collision> collisionObjects, GraphicsDevice _graphics, Player player, List<Projectile> projectiles, Camera camera)
         {
             string fpsText = $"FPS: {FPS:F2}";
             redTexture = CreateColoredTexture(_graphics, Color.Red);
@@ -51,9 +51,6 @@ namespace VSC
             string player_screen_Pos_string = $"X:{player_screen_Pos.X:F2} Y: {player_screen_Pos.Y:F2} ";
 
             _spriteBatch.Begin();
-
-            _spriteBatch.DrawString(spriteFont, fpsText, new Vector2(10, 10), Color.White);
-            _spriteBatch.DrawString(spriteFont, player_screen_Pos_string, new Vector2(10, 30), Color.White);
 
             // Draw collision objects
             foreach (Collision collisionObject in collisionObjects)
@@ -66,6 +63,17 @@ namespace VSC
             //Rectangle playerBounds = new Rectangle((int)player.Position.X, (int)player.Position.Y, 16 * (int)Globals.texture_scale_factor, 16 * (int)Globals.texture_scale_factor);
             Circle.DrawCircle(_spriteBatch, CreateCircleTexture(_graphics, player.GetBoundsRadius(), Color.White), player.Position, player.GetBoundsRadius(), Color.White);
             //_spriteBatch.Draw(CreateColoredTexture(_graphics, Color.White), playerBounds, Color.White);
+
+            // Draw collision objects
+            foreach (Projectile projectile in projectiles)
+            {
+                Circle bounds = projectile.Bounds;
+                // Draw a rectangle representing the collision object's bounds
+                Circle.DrawCircle(_spriteBatch, CreateCircleTexture(_graphics, projectile.GetBoundsRadius(), Color.Blue), projectile.Position, projectile.GetBoundsRadius(), Color.Blue);
+            }
+
+            _spriteBatch.DrawString(spriteFont, fpsText, new Vector2(10, 10), Color.White);
+            _spriteBatch.DrawString(spriteFont, player_screen_Pos_string, new Vector2(10, 30), Color.White);
 
             _spriteBatch.End();
         }

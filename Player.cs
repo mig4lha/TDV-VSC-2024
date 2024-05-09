@@ -13,8 +13,9 @@ namespace VSC
 {
     public class Player
     {
-        // Player position
         public Vector2 Position { get; set; }
+        public Vector2 Velocity { get; set; }
+        public Circle Bounds { get; private set; }
 
         public float ProjectileSpeed { get; set; }
         public float ProjectileFireRate { get; set; }
@@ -22,8 +23,8 @@ namespace VSC
         // Player texture
         private Texture2D texture;
 
-        // Player speed
-        private float speed = 300f;
+        // Player Speed
+        private float Speed = 300f;
 
         // Constructor
         public Player(Texture2D texture, Vector2 position)
@@ -31,8 +32,10 @@ namespace VSC
             this.texture = texture;
             Position = position;
 
-            ProjectileSpeed = 30f;
-            ProjectileFireRate = 0.5f;
+            ProjectileSpeed = 400f;
+            ProjectileFireRate = 0.6f;
+
+            Velocity = Vector2.Zero;
         }
 
         // Update method
@@ -44,31 +47,33 @@ namespace VSC
             // Get the keyboard state
             KeyboardState keyboardState = Keyboard.GetState();
 
-            // Create a copy of the current position
-            Vector2 newPosition = Position;
-
-            // Move the player based on keyboard input
+            // Calculate player velocity based on keyboard input
+            Vector2 newVelocity = Vector2.Zero;
             if (keyboardState.IsKeyDown(Keys.Left) || keyboardState.IsKeyDown(Keys.A))
             {
-                newPosition.X -= speed * deltaTime; 
+                newVelocity.X -= Speed; // Move left
             }
             if (keyboardState.IsKeyDown(Keys.Right) || keyboardState.IsKeyDown(Keys.D))
             {
-                newPosition.X += speed * deltaTime; 
+                newVelocity.X += Speed; // Move right
             }
             if (keyboardState.IsKeyDown(Keys.Up) || keyboardState.IsKeyDown(Keys.W))
             {
-                newPosition.Y -= speed * deltaTime; 
+                newVelocity.Y -= Speed; // Move up
             }
             if (keyboardState.IsKeyDown(Keys.Down) || keyboardState.IsKeyDown(Keys.S))
             {
-                newPosition.Y += speed * deltaTime;
+                newVelocity.Y += Speed; // Move down
             }
 
-            // Update the position
-            Position = newPosition;
-        }
+            // Update the velocity
+            Velocity = newVelocity;
 
+            // Update the position based on velocity
+            Position += Velocity * deltaTime;
+
+            UpdateBounds();
+        }
 
         //public Rectangle GetBounds()
         //{
@@ -95,6 +100,19 @@ namespace VSC
             int radius = (int)(8 * Globals.texture_scale_factor); // Half of the width or height
 
             return radius;
+        }
+
+        public void UpdateBounds()
+        {
+            // Assuming the player's texture size is 16x16
+            // Calculate the radius of the circle
+            int radius = (int)(8 * Globals.texture_scale_factor); // Half of the width or height
+
+            // Calculate the center of the circle
+            Vector2 center = new Vector2(Position.X + radius, Position.Y + radius);
+
+            // Update the player's bounds
+            Bounds = new Circle(center, radius);
         }
 
         // Draw method
