@@ -25,6 +25,7 @@ namespace VSC
         public static Texture2D floor_tile4;
         public static Texture2D wall_top_tile;
         public static Texture2D square_player_spawn;
+        public static Texture2D skeleton_texture;
         private Texture2D player_sprite;
         public static Texture2D empty_tile;
         public static Texture2D projectileTexture;
@@ -37,7 +38,8 @@ namespace VSC
 
         private List<Collision> collisionObjects;
 
-        List<Projectile> projectiles = new List<Projectile>();
+        public List<Projectile> projectiles = new List<Projectile>();
+        public List<Enemy> enemies = new List<Enemy>();
 
         private Player player;
 
@@ -87,6 +89,8 @@ namespace VSC
             // Initialize camera with starting position
             camera = new Camera(GraphicsDevice, Vector2.Zero);
 
+            SpawnEnemies(10); // Spawn 10 enemies
+
             base.Initialize();
         }
 
@@ -102,6 +106,7 @@ namespace VSC
             empty_tile = Content.Load<Texture2D>("empty_tile");
             player_sprite = Content.Load<Texture2D>("priest1_v1_1");
             projectileTexture = Content.Load<Texture2D>("projectile");
+            skeleton_texture = Content.Load<Texture2D>("skeleton2_v2_1");
 
             testFont = Content.Load<SpriteFont>("TestFont");
 
@@ -143,20 +148,67 @@ namespace VSC
             // Update the flag to track F3 key press
             wasF3Pressed = keyboardState.IsKeyDown(Keys.F3);
 
-            // Store the player's current position relative to the camera
-            Vector2 currentPlayerPosition = player.Position - camera.Position;
+            // Store the player's current position
+            Vector2 previousPosition = player.Position;
 
             player.Update(gameTime);
 
-            // Check for collisions between the player and walls
+            // Handle collisions
+            bool collisionDetected = false;
+
             foreach (Collision collisionObject in collisionObjects)
             {
-                if (Collision.CollidesWithCircle(player.GetBounds(), collisionObject.GetBounds()))
+                if (Collision.Collides(player.Bounds, collisionObject.Bounds))
                 {
-                    // Reset player position to the last valid position
-                    player.Position = currentPlayerPosition + camera.Position;
-                    // Update the player's bounds to match the corrected position
-                    player.Update(gameTime);
+                    collisionDetected = true;
+                    break;
+                }
+            }
+
+            if (collisionDetected)
+            {
+                // Handle collision response by adjusting position incrementally
+                player.Position = previousPosition;
+                player.UpdateBounds();
+
+                // Attempt to move player along x-axis only
+                player.Position = new Vector2(player.Position.X + player.Velocity.X * deltaTime, player.Position.Y);
+                player.UpdateBounds();
+                collisionDetected = false;
+                foreach (Collision collisionObject in collisionObjects)
+                {
+                    if (Collision.Collides(player.Bounds, collisionObject.Bounds))
+                    {
+                        collisionDetected = true;
+                        break;
+                    }
+                }
+
+                if (collisionDetected)
+                {
+                    // Revert x-axis movement
+                    player.Position = new Vector2(previousPosition.X, player.Position.Y);
+                    player.UpdateBounds();
+                }
+
+                // Attempt to move player along y-axis only
+                player.Position = new Vector2(player.Position.X, player.Position.Y + player.Velocity.Y * deltaTime);
+                player.UpdateBounds();
+                collisionDetected = false;
+                foreach (Collision collisionObject in collisionObjects)
+                {
+                    if (Collision.Collides(player.Bounds, collisionObject.Bounds))
+                    {
+                        collisionDetected = true;
+                        break;
+                    }
+                }
+
+                if (collisionDetected)
+                {
+                    // Revert y-axis movement
+                    player.Position = new Vector2(player.Position.X, previousPosition.Y);
+                    player.UpdateBounds();
                 }
             }
 
@@ -167,34 +219,37 @@ namespace VSC
             MouseState mouseState = Mouse.GetState();
             if (mouseState.LeftButton == ButtonState.Pressed && timeSinceLastShot >= player.ProjectileFireRate)
             {
-                Vector2 projectilePosition = player.Position;
-                projectilePosition.X += 16;
-                projectilePosition.Y += 16;
+                // Start projectile from player center
+                Vector2 projectilePosition = player.Position + new Vector2(player.Bounds.Radius);
 
                 // Calculate direction towards cursor
-                Vector2 directionToCursor = new Vector2(mouseState.X, mouseState.Y) - projectilePosition;
+                Vector2 directionToCursor = new Vector2(mouseState.X, mouseState.Y) - (projectilePosition - camera.Position);
                 directionToCursor.Normalize();
 
-                // Calculate player's forward direction (facing the cursor)
-                Vector2 playerDirection = directionToCursor;
-
-                // Incorporate player's momentum into the forward direction
-                if (player.Velocity.LengthSquared() > 0)
+                // Check if the player is moving
+                if (player.Velocity != Vector2.Zero)
                 {
-                    playerDirection += Vector2.Normalize(player.Velocity) * Globals.player_momentum_projectile_factor; // Adjust the factor as needed
+                    // Calculate the angle between the player's velocity direction and the cursor direction
+                    float angleBetween = (float)Math.Atan2(player.Velocity.Y, player.Velocity.X) - (float)Math.Atan2(directionToCursor.Y, directionToCursor.X);
+
+                    // Adjust the projectile direction based on the angle and a predetermined factor
+                    float momentumFactor = MathHelper.ToDegrees(angleBetween) * Globals.player_momentum_projectile_factor; // Convert to degrees and apply the factor
+                    float maxChangeAngle = 10f; // Maximum change angle in degrees
+                    momentumFactor = MathHelper.Clamp(momentumFactor, -maxChangeAngle, maxChangeAngle); // Clamp the factor within the maximum change angle
+                    float adjustedAngle = MathHelper.ToRadians(MathHelper.ToDegrees((float)Math.Atan2(directionToCursor.Y, directionToCursor.X)) + momentumFactor); // Calculate the adjusted angle
+                    directionToCursor = new Vector2((float)Math.Cos(adjustedAngle), (float)Math.Sin(adjustedAngle)); // Convert the adjusted angle back to a direction vector
                 }
 
-                // Normalize the player's forward direction
-                playerDirection.Normalize();
+                // Normalize the direction vector again
+                directionToCursor.Normalize();
 
                 // Create projectile at player position with velocity in the calculated direction
-                Vector2 projectileVelocity = playerDirection * player.ProjectileSpeed;
+                Vector2 projectileVelocity = directionToCursor * player.ProjectileSpeed;
                 projectiles.Add(new Projectile(projectileTexture, projectilePosition, projectileVelocity));
 
                 // Reset time since last shot
                 timeSinceLastShot = 0f;
             }
-
 
 
             // Update projectiles
@@ -205,7 +260,7 @@ namespace VSC
                 // Check for collision with other objects or bounds
                 foreach (Collision collisionObject in collisionObjects)
                 {
-                    if (Collision.CollidesWithCircle(projectile.Bounds, collisionObject.Bounds))
+                    if (Collision.Collides(projectile.Bounds, collisionObject.Bounds))
                     {
                         // Handle collision
                         // For example: remove the projectile from the list
@@ -215,8 +270,26 @@ namespace VSC
                 }
             }
 
+            // Update enemies
+            foreach (Enemy enemy in enemies.ToList())
+            {
+                enemy.Update(gameTime);
+
+                // Check for collision with projectiles
+                foreach (Projectile projectile in projectiles.ToList())
+                {
+                    if (Collision.CircleCircleCollision(enemy.Bounds, projectile.Bounds))
+                    {
+                        // Handle collision with projectile
+                        enemies.Remove(enemy);
+                        projectiles.Remove(projectile);
+                        break; // No need to check for collision with other projectiles
+                    }
+                }
+            }
+
             // Remove projectiles if they move beyond a certain radius from the player
-            float maxDistanceSquared =  Projectile.DespawnDistance * Projectile.DespawnDistance; // 500px radius
+            float maxDistanceSquared = Projectile.DespawnDistance * Projectile.DespawnDistance; // 500px radius
             projectiles.RemoveAll(p => Vector2.DistanceSquared(p.Position, player.Position) > maxDistanceSquared);
 
             // Update camera to follow player
@@ -225,28 +298,21 @@ namespace VSC
             base.Update(gameTime);
         }
 
+
         protected override void Draw(GameTime gameTime)
         {
             Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
             GraphicsDevice.Clear(backgroundColor);
 
-            // Calculate offset to center the map on the screen
-            int offsetX = (GraphicsDevice.Viewport.Width - (Globals.MapWidth * Globals.TileWidth * (int)Globals.texture_scale_factor)) / 2;
-            int offsetY = (GraphicsDevice.Viewport.Height - (Globals.MapHeight * Globals.TileHeight * (int)Globals.texture_scale_factor)) / 2;
-            offsetX = 0;
-            offsetY = 0;
-
             // Begin drawing with camera's transform matrix
             _spriteBatch.Begin(transformMatrix: camera.TransformMatrix);
-
-            //_spriteBatch.DrawString(testFont, "FPS: " + Utils.FPS.ToString("0.00"), new Vector2(10, 10), Color.White);
 
             // Draw the tile map
             for (int x = 0; x < Globals.MapWidth; x++)
             {
                 for (int y = 0; y < Globals.MapHeight; y++)
                 {
-                    Vector2 position = new Vector2(offsetX + x * Globals.TileWidth * Globals.texture_scale_factor, offsetY + y * Globals.TileHeight * Globals.texture_scale_factor);
+                    Vector2 position = new Vector2(x * Globals.TileWidth * Globals.texture_scale_factor,y * Globals.TileHeight * Globals.texture_scale_factor);
 
                     int tileType = tileMap[x, y];
 
@@ -273,16 +339,44 @@ namespace VSC
                 projectile.Draw(_spriteBatch);
             }
 
+            // Draw enemies
+            foreach (Enemy enemy in enemies)
+            {
+                enemy.Draw(_spriteBatch);
+            }
+
             _spriteBatch.End();
 
             // Draw debug menu if visible
             if (Globals.debugMenuVisible)
             {
-                Utils.DrawDebugMenu(_spriteBatch, testFont, collisionObjects, GraphicsDevice, player, projectiles, camera);
+                Utils.DrawDebugMenu(_spriteBatch, testFont, collisionObjects, GraphicsDevice, player, projectiles, camera, enemies);
             }
 
             base.Draw(gameTime);
         }
 
+        private void SpawnEnemies(int count)
+        {
+            Random random = new Random();
+
+            while (enemies.Count < count)
+            {
+                // Generate random position within map bounds
+                int x = random.Next(0, Globals.MapWidth);
+                int y = random.Next(0, Globals.MapHeight);
+
+                // Check if the tile is not empty or a wall
+                if (tileMap[x, y] != 0 && tileMap[x, y] != 2 && tileMap[x, y] != 3)
+                {
+                    // Calculate position in world coordinates
+                    Vector2 position = new Vector2(x * Globals.TileWidth, y * Globals.TileHeight);
+
+                    // Create enemy object and add to list
+                    Enemy enemy = new Enemy(skeleton_texture, position);
+                    enemies.Add(enemy);
+                }
+            }
+        }
     }
 }

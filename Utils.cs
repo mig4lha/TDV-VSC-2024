@@ -41,11 +41,12 @@ namespace VSC
             }
         }
 
-        public static void DrawDebugMenu(SpriteBatch _spriteBatch, SpriteFont spriteFont, List<Collision> collisionObjects, GraphicsDevice _graphics, Player player, List<Projectile> projectiles, Camera camera)
+        public static void DrawDebugMenu(SpriteBatch _spriteBatch, SpriteFont spriteFont, List<Collision> collisionObjects, GraphicsDevice _graphics, Player player, List<Projectile> projectiles, Camera camera, List<Enemy> enemies)
         {
             string fpsText = $"FPS: {FPS:F2}";
             redTexture = CreateColoredTexture(_graphics, Color.Red);
 
+            // Convert player position to screen coordinates
             Vector2 player_screen_Pos = player.Position;
 
             string player_screen_Pos_string = $"X:{player_screen_Pos.X:F2} Y: {player_screen_Pos.Y:F2} ";
@@ -56,20 +57,42 @@ namespace VSC
             foreach (Collision collisionObject in collisionObjects)
             {
                 Rectangle bounds = collisionObject.Bounds;
+                // Adjust the bounds position based on the camera's offset
+                bounds.X -= (int)camera.Position.X;
+                bounds.Y -= (int)camera.Position.Y;
                 // Draw a rectangle representing the collision object's bounds
                 _spriteBatch.Draw(redTexture, bounds, Color.White);
             }
 
-            //Rectangle playerBounds = new Rectangle((int)player.Position.X, (int)player.Position.Y, 16 * (int)Globals.texture_scale_factor, 16 * (int)Globals.texture_scale_factor);
-            Circle.DrawCircle(_spriteBatch, CreateCircleTexture(_graphics, player.GetBoundsRadius(), Color.White), player.Position, player.GetBoundsRadius(), Color.White);
-            //_spriteBatch.Draw(CreateColoredTexture(_graphics, Color.White), playerBounds, Color.White);
+            // Adjust player bounds position based on the camera's offset
+            Circle playerBounds = player.Bounds;
+            Vector2 playerBoundsPosition = playerBounds.Center - new Vector2(playerBounds.Radius) - camera.Position;
+
+            // Draw the player's collision circle
+            Circle.DrawCircle(_spriteBatch, CreateCircleTexture(_graphics, (int)playerBounds.Radius, Color.White), playerBoundsPosition, (int)playerBounds.Radius, Color.White);
 
             // Draw collision objects
             foreach (Projectile projectile in projectiles)
             {
-                Circle bounds = projectile.Bounds;
-                // Draw a rectangle representing the collision object's bounds
-                Circle.DrawCircle(_spriteBatch, CreateCircleTexture(_graphics, projectile.GetBoundsRadius(), Color.Blue), projectile.Position, projectile.GetBoundsRadius(), Color.Blue);
+                // Calculate the texture position
+                Vector2 texturePosition = projectile.Position - new Vector2(projectile.GetBoundsRadius());
+                // Adjust the texture position based on the camera's offset
+                texturePosition -= camera.Position;
+
+                // Draw the projectile's collision circle
+                Circle.DrawCircle(_spriteBatch, CreateCircleTexture(_graphics, projectile.GetBoundsRadius(), Color.Blue), texturePosition, projectile.GetBoundsRadius(), Color.Blue);
+            }
+
+            // Draw collision objects
+            foreach (Enemy enemy in enemies)
+            {
+                // Calculate the texture position
+                Vector2 texturePosition = enemy.Position - new Vector2(enemy.Texture.Width / 2, enemy.Texture.Height / 2);
+                // Adjust the texture position based on the camera's offset
+                texturePosition -= camera.Position;
+
+                // Draw the enemy's collision circle
+                Circle.DrawCircle(_spriteBatch, CreateCircleTexture(_graphics, (int)enemy.Bounds.Radius, Color.Green), texturePosition, (int)enemy.Bounds.Radius, Color.Green);
             }
 
             _spriteBatch.DrawString(spriteFont, fpsText, new Vector2(10, 10), Color.White);
@@ -78,34 +101,44 @@ namespace VSC
             _spriteBatch.End();
         }
 
+
+
+
+
         public static Texture2D CreateCircleTexture(GraphicsDevice graphicsDevice, int radius, Color color)
         {
             int diameter = radius * 2;
             Texture2D texture = new Texture2D(graphicsDevice, diameter, diameter);
+            Color[] colorData = new Color[diameter * diameter];
 
-            Color[] data = new Color[diameter * diameter];
-            float radiusSquared = radius * radius;
+            float radiussquared = radius * radius;
 
             for (int x = 0; x < diameter; x++)
             {
                 for (int y = 0; y < diameter; y++)
                 {
                     int index = x * diameter + y;
-                    Vector2 position = new Vector2(x - radius, y - radius);
-                    if (position.LengthSquared() <= radiusSquared)
+                    Vector2 pos = new Vector2(x - radius, y - radius);
+                    if (pos.LengthSquared() <= radiussquared)
                     {
-                        data[index] = color;
+                        colorData[index] = color;
                     }
                     else
                     {
-                        data[index] = Color.Transparent;
+                        colorData[index] = Color.Transparent;
                     }
                 }
             }
 
-            texture.SetData(data);
+            texture.SetData(colorData);
             return texture;
         }
+
+        public static void DrawCircle(SpriteBatch spriteBatch, Texture2D texture, Vector2 position, int radius, Color color)
+        {
+            spriteBatch.Draw(texture, position, color);
+        }
+
 
         public static MouseCursor ScaleCursorTexture(GraphicsDevice _graphics, Texture2D originalCursorTexture, float scaleFactor)
         {

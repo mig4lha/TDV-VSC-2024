@@ -10,17 +10,26 @@ namespace VSC
 {
     public class Collision
     {
-        // Rectangle representing the bounds of the collision object
-        public Rectangle Bounds { get; set; }
+        public Rectangle Bounds { get; private set; }
 
         public Collision(Rectangle bounds)
         {
             Bounds = bounds;
         }
 
-        public Rectangle GetBounds()
+        public static bool Collides(Circle circle, Rectangle rect)
         {
-            return Bounds;
+            // Find the closest point on the rectangle to the circle's center
+            float closestX = MathHelper.Clamp(circle.Center.X, rect.Left, rect.Right);
+            float closestY = MathHelper.Clamp(circle.Center.Y, rect.Top, rect.Bottom);
+
+            // Calculate the distance between the circle's center and this closest point
+            float distanceX = circle.Center.X - closestX;
+            float distanceY = circle.Center.Y - closestY;
+
+            // If the distance is less than the circle's radius, an intersection occurs
+            float distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+            return distanceSquared < (circle.Radius * circle.Radius);
         }
 
         // Method to check for collision with another rectangle
@@ -50,6 +59,14 @@ namespace VSC
             float distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
             return distanceSquared < (circle.Radius * circle.Radius);
         }
+
+        public static bool CircleCircleCollision(Circle circle1, Circle circle2)
+        {
+            float distanceSquared = Vector2.DistanceSquared(circle1.Center, circle2.Center);
+            float radiusSumSquared = (circle1.Radius + circle2.Radius) * (circle1.Radius + circle2.Radius);
+            return distanceSquared <= radiusSumSquared;
+        }
+
 
         public static List<Collision> CreateCollisionObjects(GraphicsDevice GraphicsDevice, int[,] tileMap)
         {

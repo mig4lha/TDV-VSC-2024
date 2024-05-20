@@ -22,6 +22,6 @@ namespace VSC
 
         public static bool debugMenuVisible = true;
 
-        public static float player_momentum_projectile_factor = 0.2f;
+        public static float player_momentum_projectile_factor = 0.6f;
     }
 }

@@ -44,7 +44,9 @@ namespace VSC
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            spriteBatch.Draw(Texture, Position, Color.White);
+            // Draw the projectile's texture centered at the projectile's position
+            spriteBatch.Draw(Texture, Position - new Vector2(Texture.Width / 2, Texture.Height / 2), Color.White);
         }
+
     }
 }
