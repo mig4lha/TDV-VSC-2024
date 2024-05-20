@@ -23,5 +23,9 @@ namespace VSC
         public static bool debugMenuVisible = true;
 
         public static float player_momentum_projectile_factor = 0.6f;
+
+        public static int default_enemy_hp = 100;
+
+        public static float default_enemy_speed = 100;
     }
 }

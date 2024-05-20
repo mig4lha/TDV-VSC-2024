@@ -11,6 +11,7 @@ public class Player
 
     public float ProjectileSpeed { get; set; }
     public float ProjectileFireRate { get; set; }
+    public int DamagePerShot { get; set; }
 
     // Player texture
     private Texture2D texture;
@@ -26,6 +27,7 @@ public class Player
 
         ProjectileSpeed = 600f;
         ProjectileFireRate = 0.6f;
+        DamagePerShot = 50;
 
         Velocity = Vector2.Zero;
 

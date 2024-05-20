@@ -41,65 +41,48 @@ namespace VSC
             }
         }
 
-        public static void DrawDebugMenu(SpriteBatch _spriteBatch, SpriteFont spriteFont, List<Collision> collisionObjects, GraphicsDevice _graphics, Player player, List<Projectile> projectiles, Camera camera, List<Enemy> enemies)
+        public static void DrawDebugMenu(SpriteBatch spriteBatch, SpriteFont spriteFont, List<Collision> collisionObjects, GraphicsDevice graphics, Player player, List<Projectile> projectiles, Camera camera, List<Enemy> enemies)
         {
             string fpsText = $"FPS: {FPS:F2}";
-            redTexture = CreateColoredTexture(_graphics, Color.Red);
+            redTexture = CreateColoredTexture(graphics, Color.Red);
 
-            // Convert player position to screen coordinates
-            Vector2 player_screen_Pos = player.Position;
-
-            string player_screen_Pos_string = $"X:{player_screen_Pos.X:F2} Y: {player_screen_Pos.Y:F2} ";
-
-            _spriteBatch.Begin();
+            spriteBatch.Begin();
 
             // Draw collision objects
             foreach (Collision collisionObject in collisionObjects)
             {
                 Rectangle bounds = collisionObject.Bounds;
-                // Adjust the bounds position based on the camera's offset
                 bounds.X -= (int)camera.Position.X;
                 bounds.Y -= (int)camera.Position.Y;
-                // Draw a rectangle representing the collision object's bounds
-                _spriteBatch.Draw(redTexture, bounds, Color.White);
+                spriteBatch.Draw(redTexture, bounds, Color.White);
             }
 
-            // Adjust player bounds position based on the camera's offset
+            // Draw player collision circle
             Circle playerBounds = player.Bounds;
             Vector2 playerBoundsPosition = playerBounds.Center - new Vector2(playerBounds.Radius) - camera.Position;
+            Circle.DrawCircle(spriteBatch, CreateCircleTexture(graphics, (int)playerBounds.Radius, Color.White), playerBoundsPosition, (int)playerBounds.Radius, Color.White);
 
-            // Draw the player's collision circle
-            Circle.DrawCircle(_spriteBatch, CreateCircleTexture(_graphics, (int)playerBounds.Radius, Color.White), playerBoundsPosition, (int)playerBounds.Radius, Color.White);
-
-            // Draw collision objects
+            // Draw projectile collision circles
             foreach (Projectile projectile in projectiles)
             {
-                // Calculate the texture position
                 Vector2 texturePosition = projectile.Position - new Vector2(projectile.GetBoundsRadius());
-                // Adjust the texture position based on the camera's offset
                 texturePosition -= camera.Position;
-
-                // Draw the projectile's collision circle
-                Circle.DrawCircle(_spriteBatch, CreateCircleTexture(_graphics, projectile.GetBoundsRadius(), Color.Blue), texturePosition, projectile.GetBoundsRadius(), Color.Blue);
+                Circle.DrawCircle(spriteBatch, CreateCircleTexture(graphics, projectile.GetBoundsRadius(), Color.Blue), texturePosition, projectile.GetBoundsRadius(), Color.Blue);
             }
 
-            // Draw collision objects
+            // Draw enemy collision circles
             foreach (Enemy enemy in enemies)
             {
-                // Calculate the texture position
-                Vector2 texturePosition = enemy.Position - new Vector2(enemy.Texture.Width / 2, enemy.Texture.Height / 2);
-                // Adjust the texture position based on the camera's offset
-                texturePosition -= camera.Position;
-
-                // Draw the enemy's collision circle
-                Circle.DrawCircle(_spriteBatch, CreateCircleTexture(_graphics, (int)enemy.Bounds.Radius, Color.Green), texturePosition, (int)enemy.Bounds.Radius, Color.Green);
+                Vector2 texturePosition = enemy.Bounds.Center - new Vector2(enemy.Bounds.Radius) - camera.Position;
+                Circle.DrawCircle(spriteBatch, CreateCircleTexture(graphics, (int)enemy.Bounds.Radius, Color.Green), texturePosition, (int)enemy.Bounds.Radius, Color.Green);
             }
 
-            _spriteBatch.DrawString(spriteFont, fpsText, new Vector2(10, 10), Color.White);
-            _spriteBatch.DrawString(spriteFont, player_screen_Pos_string, new Vector2(10, 30), Color.White);
+            spriteBatch.DrawString(spriteFont, fpsText, new Vector2(10, 10), Color.White);
+            spriteBatch.DrawString(spriteFont, $"Player Position: X:{player.Position.X:F2} Y:{player.Position.Y:F2}", new Vector2(10, 30), Color.White);
 
-            _spriteBatch.End();
+            spriteBatch.End();
         }
+
 
 
 

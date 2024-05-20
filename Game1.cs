@@ -34,14 +34,19 @@ namespace VSC
 
         private Camera camera;
 
-        private SpriteFont testFont;
+        private SpriteFont defaultFont;
+        private SpriteFont timerFont;
 
         private List<Collision> collisionObjects;
 
         public List<Projectile> projectiles = new List<Projectile>();
-        public List<Enemy> enemies = new List<Enemy>();
+        public static List<Enemy> enemies = new List<Enemy>();
 
         private Player player;
+
+        private double initialTime = 60.0; // Initial time in seconds
+        private double remainingTime;
+        private bool timerRunning;
 
         private Vector2 playerStartPosition;
 
@@ -89,6 +94,9 @@ namespace VSC
             // Initialize camera with starting position
             camera = new Camera(GraphicsDevice, Vector2.Zero);
 
+            remainingTime = initialTime;
+            timerRunning = true;
+
             SpawnEnemies(10); // Spawn 10 enemies
 
             base.Initialize();
@@ -108,7 +116,8 @@ namespace VSC
             projectileTexture = Content.Load<Texture2D>("projectile");
             skeleton_texture = Content.Load<Texture2D>("skeleton2_v2_1");
 
-            testFont = Content.Load<SpriteFont>("TestFont");
+            defaultFont = Content.Load<SpriteFont>("TestFont");
+            timerFont = Content.Load<SpriteFont>("Timer");
 
             customCursorTexture = Content.Load<Texture2D>("cursor");
         }
@@ -119,6 +128,17 @@ namespace VSC
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
             Utils.UpdateFPS(gameTime);
+
+            if (timerRunning)
+            {
+                remainingTime -= deltaTime;
+                if (remainingTime <= 0)
+                {
+                    remainingTime = 0;
+                    timerRunning = false;
+                    // Handle timer reaching 0 (e.g., end game, display message)
+                }
+            }
 
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
@@ -131,6 +151,7 @@ namespace VSC
             {
                 // Reset player position to the spawn location
                 player.Position = playerStartPosition;
+                SpawnEnemies(10);
             }
 
             // Update the variable for the next frame
@@ -273,15 +294,14 @@ namespace VSC
             // Update enemies
             foreach (Enemy enemy in enemies.ToList())
             {
-                enemy.Update(gameTime);
+                enemy.Update(gameTime, player.Position, collisionObjects, enemies);
 
                 // Check for collision with projectiles
                 foreach (Projectile projectile in projectiles.ToList())
                 {
                     if (Collision.CircleCircleCollision(enemy.Bounds, projectile.Bounds))
                     {
-                        // Handle collision with projectile
-                        enemies.Remove(enemy);
+                        enemy.TakeDamage(player.DamagePerShot);
                         projectiles.Remove(projectile);
                         break; // No need to check for collision with other projectiles
                     }
@@ -350,8 +370,28 @@ namespace VSC
             // Draw debug menu if visible
             if (Globals.debugMenuVisible)
             {
-                Utils.DrawDebugMenu(_spriteBatch, testFont, collisionObjects, GraphicsDevice, player, projectiles, camera, enemies);
+                Utils.DrawDebugMenu(_spriteBatch, defaultFont, collisionObjects, GraphicsDevice, player, projectiles, camera, enemies);
             }
+
+            // Begin a new sprite batch for UI elements
+            _spriteBatch.Begin();
+
+            // Draw the timer
+            int minutes = (int)(remainingTime / 60);
+            int seconds = (int)(remainingTime % 60);
+            string timerText = $"{minutes:D2}:{seconds:D2}";
+
+            // Measure the width of the text
+            Vector2 textSize = defaultFont.MeasureString(timerText);
+
+            // Calculate the position to center the text on the X axis
+            float xPosition = (GraphicsDevice.Viewport.Width - textSize.X) / 2;
+            Vector2 position_timer = new Vector2(xPosition, 50);
+
+            // Draw the centered text
+            _spriteBatch.DrawString(timerFont, timerText, position_timer, Color.White);
+
+            _spriteBatch.End();
 
             base.Draw(gameTime);
         }

@@ -176,6 +176,13 @@
 /processorParam:TextureFormat=Compressed
 /build:TestFont.spritefont
 
+#begin Timer.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:Timer.spritefont
+
 #begin wall_bottom_tile.png
 /importer:TextureImporter
 /processor:TextureProcessor
