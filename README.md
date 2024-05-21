@@ -9,7 +9,13 @@ José Miguel Cunha a22550
 
 Iremos apresentar o código do nosso jogo ***Vampire Survivors***, uma recriação do jogo designado pelo mesmo título. Nesta apresentação vamos mostrar não só jogo em si como também o código usado para refazer este jogo.
 
-## O que é 
+## O que é *Vampire Survivors*
+
+*Vampire Survivors* é um *roguelike shoot'em up* onde o jogador luta contra rondas de inimigos para tentar ver quanto tempo consegue sobreviver. O jogo em si tem estilo muito minimalista num setting gótico.
+
+---
+
+## Código
 
 Para este jogo, usamos as seguintes classes:
 -***Globals.cs***;
