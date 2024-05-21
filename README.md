@@ -7,7 +7,9 @@ José Miguel Cunha a22550
 
 ## Introdução
 
-Iremos apresentar o código do nosso jogo ***Vampire Survivors***, uma recriação do jogo designado pelo mesmo título. Nesta apresentação vamos mostrar o código usado para recriar este roguelike.
+Iremos apresentar o código do nosso jogo ***Vampire Survivors***, uma recriação do jogo designado pelo mesmo título. Nesta apresentação vamos mostrar não só jogo em si como também o código usado para refazer este jogo.
+
+## O que é 
 
 Para este jogo, usamos as seguintes classes:
 -***Globals.cs***;
@@ -22,7 +24,7 @@ Para este jogo, usamos as seguintes classes:
 
 ---
 
-###Globals.cs
+### Globals.cs
 
 Esta classe é responsável por todas as variáveis globais que serão utilizadas no código para executar o jogo. Coisas como a velocidade dos projéteis, a vida do jogador e dos inimigos assim como a velocidade, etc.
 
@@ -65,7 +67,7 @@ internal class Globals
 
 ---
 
-###MapLoader.cs
+### MapLoader.cs
 
 Esta classe trata da leitura de ficheiros e criação de mapas com base nesses ficheiro. 
 
@@ -160,7 +162,7 @@ Esta secção trata da criação da instância *MapLoader* de forma a poder cria
 
 ---
 
-###Utils.cs
+### Utils.cs
 
 Esta classe trata de todos os menus assim como as diferentes texturas usadas no jogo assim como atualiza.
 
@@ -198,7 +200,7 @@ public static void UpdateFPS(GameTime gameTime)
 }
 ```
 
--**UpdateFPS** - está em carregue de atualizar o contador de *frames per second*;
+- **UpdateFPS** - está em carregue de atualizar o contador de *frames per second*;
 
 ```
 public static void DrawDebugMenu(SpriteBatch spriteBatch, SpriteFont spriteFont, List<Collision> collisionObjects, GraphicsDevice graphics, Player player, List<Projectile> projectiles, Camera camera, List<Enemy> enemies)
@@ -244,7 +246,7 @@ public static void DrawDebugMenu(SpriteBatch spriteBatch, SpriteFont spriteFont,
 }
 ```
 
--**DrawDebugMenu** - é uma função maioritariamente usada para nós vermos se as colisões coincidem com os objetos em si.
+- **DrawDebugMenu** - é uma função maioritariamente usada para nós vermos se as colisões coincidem com os objetos em si.
 
 ```
 public static Texture2D CreateCircleTexture(GraphicsDevice graphicsDevice, int radius, Color color)
@@ -282,8 +284,8 @@ public static void DrawCircle(SpriteBatch spriteBatch, Texture2D texture, Vector
 }
 ```
 
--**CreateCircleTexture** - trata da criação de círculos usados no debug menu.  
--**DrawCircle** - dá-nos uma representação visual dos círculos criados.
+- **CreateCircleTexture** - trata da criação de círculos usados no debug menu.  
+- **DrawCircle** - dá-nos uma representação visual dos círculos criados.
 
 ```
 public static Texture2D CreateRectangleTexture(GraphicsDevice graphicsDevice, int width, int height, Color color)
@@ -296,7 +298,7 @@ public static Texture2D CreateRectangleTexture(GraphicsDevice graphicsDevice, in
 }
 ```
 
--**CreateRectangleTexture** - trata da criação de retângulos usados no debug menu.
+- **CreateRectangleTexture** - trata da criação de retângulos usados no debug menu.
 
 ```
 public static MouseCursor ScaleCursorTexture(GraphicsDevice _graphics, Texture2D originalCursorTexture, float scaleFactor)
@@ -328,7 +330,7 @@ public static MouseCursor ScaleCursorTexture(GraphicsDevice _graphics, Texture2D
 }
 ```
 
--**ScaleCursorTexture** - trata da criação do cursor usado pelo jogador para poder apontar os ataques.
+- **ScaleCursorTexture** - trata da criação do cursor usado pelo jogador para poder apontar os ataques.
 
 ```
 public static Texture2D CreateColoredTexture(GraphicsDevice graphicsDevice, Color color)
@@ -340,7 +342,7 @@ public static Texture2D CreateColoredTexture(GraphicsDevice graphicsDevice, Colo
 }
 ```
 
--**CreateColoredTexture** - função extra usada para a criação de texturas
+- **CreateColoredTexture** - função extra usada para a criação de texturas
 
 ```
 public static Texture2D GetTextureForTileType(int tileType, int x, int y)
@@ -387,7 +389,7 @@ public static Texture2D GetTextureForTileType(int tileType, int x, int y)
 }
 ```
 
--**GetTextureForTileType** - trata da creação do chão do mapa.
+- **GetTextureForTileType** - trata da creação do chão do mapa.
 
 ```
 public static void UpdateMainMenu(GameTime gameTime, GraphicsDevice graphicsDevice)
@@ -402,5 +404,1170 @@ public static void UpdateMainMenu(GameTime gameTime, GraphicsDevice graphicsDevi
 }      
 ```
 
--**UpdateMainMenu** - atualiza o menu quando o jogador preciona no *Enter*
+- **UpdateMainMenu** - atualiza o menu quando o jogador preciona no *Enter* para começar a jogar.
 
+```
+public static void UpdatePlaying(GameTime gameTime, float deltaTime, Player player, List<Projectile> projectiles)
+{
+  // Existing update logic for the playing state...
+  if (player.IsDead)
+  {
+    currentState = GameState.GameOver;
+  }
+
+  // Pausing game
+  KeyboardState keyboardState = Keyboard.GetState();
+  if (keyboardState.IsKeyDown(Keys.P) && !wasPKeyPressed)
+  {
+    isPaused = !isPaused; // Toggle the pause state
+    currentState = isPaused ? GameState.Paused : GameState.Playing; // Update game state
+  }
+  wasPKeyPressed = keyboardState.IsKeyDown(Keys.P);
+
+  if (!isPaused) // Only update the timer if the game is not paused
+  {
+    if (timerRunning)
+    {
+      remainingTime -= deltaTime;
+      if (remainingTime <= 0)
+      {
+        remainingTime = 0;
+        timerRunning = false;
+      }
+    }
+  }
+
+  keyboardState = Keyboard.GetState();
+  if (keyboardState.IsKeyDown(Keys.F3) && !wasF3Pressed)
+  {
+    Globals.debugMenuVisible = !Globals.debugMenuVisible;
+  }
+  wasF3Pressed = keyboardState.IsKeyDown(Keys.F3);
+
+  // Update spawn timer
+  spawnTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+  // Check if it's time to spawn more enemies
+  if (spawnTimer >= spawnInterval && timerRunning == true)
+  {
+    int num_enemies = (int)(Globals.timer_in_seconds - remainingTime);
+    SpawnEnemies(num_enemies);
+
+    // Reset the spawn timer
+    spawnTimer = 0f;
+  }
+
+  Vector2 previousPosition = player.Position;
+  player.Update(gameTime);
+
+  bool collisionDetected = false;
+
+  foreach (Collision collisionObject in collisionObjects)
+  {
+    if (Collision.Collides(player.Bounds, collisionObject.Bounds))
+    {
+      collisionDetected = true;
+      break;
+    }
+  }
+
+  if (collisionDetected)
+  {
+    player.Position = previousPosition;
+    player.UpdateBounds();
+
+    player.Position = new Vector2(player.Position.X + player.Velocity.X * deltaTime, player.Position.Y);
+    player.UpdateBounds();
+    collisionDetected = false;
+    foreach (Collision collisionObject in collisionObjects)
+    {
+      if (Collision.Collides(player.Bounds, collisionObject.Bounds))
+      {
+        collisionDetected = true;
+        break;
+      }
+    }
+
+    if (collisionDetected)
+    {
+      player.Position = new Vector2(previousPosition.X, player.Position.Y);
+      player.UpdateBounds();
+    }
+
+    player.Position = new Vector2(player.Position.X, player.Position.Y + player.Velocity.Y * deltaTime);
+    player.UpdateBounds();
+    collisionDetected = false;
+    foreach (Collision collisionObject in collisionObjects)
+    {
+      if (Collision.Collides(player.Bounds, collisionObject.Bounds))
+      {
+        collisionDetected = true;
+        break;
+      }
+    }
+
+    if (collisionDetected)
+    {
+      player.Position = new Vector2(player.Position.X, previousPosition.Y);
+      player.UpdateBounds();
+    }
+  }
+
+  timeSinceLastShot += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+  MouseState mouseState = Mouse.GetState();
+  if (mouseState.LeftButton == ButtonState.Pressed && timeSinceLastShot >= player.ProjectileFireRate)
+  {
+    Vector2 projectilePosition = player.Position + new Vector2(player.Bounds.Radius);
+
+    Vector2 directionToCursor = new Vector2(mouseState.X, mouseState.Y) - (projectilePosition - camera.Position);
+    directionToCursor.Normalize();
+
+    if (player.Velocity != Vector2.Zero)
+    {
+      float angleBetween = (float)Math.Atan2(player.Velocity.Y, player.Velocity.X) - (float)Math.Atan2(directionToCursor.Y, directionToCursor.X);
+      float momentumFactor = MathHelper.ToDegrees(angleBetween) * Globals.player_momentum_projectile_factor;
+      float maxChangeAngle = 10f;
+      momentumFactor = MathHelper.Clamp(momentumFactor, -maxChangeAngle, maxChangeAngle);
+      float adjustedAngle = MathHelper.ToRadians(MathHelper.ToDegrees((float)Math.Atan2(directionToCursor.Y, directionToCursor.X)) + momentumFactor);
+      directionToCursor = new Vector2((float)Math.Cos(adjustedAngle), (float)Math.Sin(adjustedAngle));
+    }
+
+    directionToCursor.Normalize();
+    Vector2 projectileVelocity = directionToCursor * player.ProjectileSpeed;
+    projectiles.Add(new Projectile(projectileTexture, projectilePosition, projectileVelocity));
+    timeSinceLastShot = 0f;
+  }
+
+  foreach (Projectile projectile in projectiles.ToList())
+  {
+    projectile.Update(deltaTime);
+    foreach (Collision collisionObject in collisionObjects)
+    {
+      if (Collision.Collides(projectile.Bounds, collisionObject.Bounds))
+      {
+        projectiles.Remove(projectile);
+        break;
+      }
+    }
+  }
+
+  foreach (Enemy enemy in enemies.ToList())
+  {
+    enemy.Update(gameTime, player.Position, collisionObjects, enemies);
+
+    foreach (Projectile projectile in projectiles.ToList())
+    {  
+      if (Collision.CircleCircleCollision(enemy.Bounds, projectile.Bounds))
+      {
+        enemy.TakeDamage(player.DamagePerShot, player);
+        projectiles.Remove(projectile);
+        break;
+      }
+    }
+
+    if (Collision.CircleCircleCollision(player.Bounds, enemy.Bounds))
+    {
+      player.TakeDamage(enemy.Damage);
+      if(player.IsDead == true)
+      {
+        currentState = GameState.GameOver;
+        return;
+      }
+    }
+  }
+
+  float maxDistanceSquared = Projectile.DespawnDistance * Projectile.DespawnDistance;
+  projectiles.RemoveAll(p => Vector2.DistanceSquared(p.Position, player.Position) > maxDistanceSquared);
+
+  camera.Follow(player.Position);
+}
+```
+
+- **UpdatePlaying** - trata de verificar colisões e atualizar o jogo
+
+```
+public static void UpdateGameOver(GameTime gameTime)
+{
+  // Handle game over input and transitions
+  KeyboardState keyboardState = Keyboard.GetState();
+
+  if (keyboardState.IsKeyDown(Keys.Enter) && !wasEnterKeyPressed)
+  {
+    currentState = GameState.MainMenu;
+  }
+  wasEnterKeyPressed = keyboardState.IsKeyDown(Keys.Enter);
+}
+```
+
+- **UpdateGameOver** - atualiza o jogo para voltar ao *Main Menu*.
+
+```
+public static void DrawMainMenu(SpriteBatch spriteBatch, Texture2D main_menu_background, Texture2D logo, Texture2D enterKeyTexture, SpriteFont menuFont, GraphicsDevice graphicsDevice)
+{
+  // Calculate the center position of the screen
+  Vector2 screenCenter = new Vector2(graphicsDevice.Viewport.Width / 2f, graphicsDevice.Viewport.Height / 2f);
+
+  // Calculate the scaled dimensions of the Enter key texture
+  float scaledEnterKeyWidth = enterKeyTexture.Width * Globals.texture_scale_factor;
+  float scaledEnterKeyHeight = enterKeyTexture.Height * Globals.texture_scale_factor;
+
+  // Define the vertical spacing between the logo and the text
+  float verticalSpacing = 80f;
+
+  // Calculate the total height of the logo, text, and Enter key texture
+  float totalHeight = logo.Height + verticalSpacing + Math.Max(menuFont.LineSpacing, scaledEnterKeyHeight);
+
+  // Calculate the starting position to center the group vertically
+  float startY = screenCenter.Y - totalHeight / 2f;
+
+  // Calculate the position of the logo (centered horizontally)
+  Vector2 logoPosition = new Vector2(screenCenter.X - (logo.Width / 2), startY);
+
+  // Calculate the width of the "Press" text and Enter key texture combined
+  float pressTextWidth = menuFont.MeasureString("Press ").X;
+  float totalTextWidth = pressTextWidth + scaledEnterKeyWidth + (menuFont.MeasureString(" to Start").X);
+
+  // Calculate the starting position to center the group horizontally
+  float startX = screenCenter.X - totalTextWidth / 2f;
+
+  // Calculate the position of the "Press" text (centered horizontally)
+  Vector2 pressTextPosition = new Vector2(startX, logoPosition.Y + logo.Height + verticalSpacing);
+
+  // Calculate the position of the Enter key texture (centered horizontally)
+  Vector2 enterKeyPosition = new Vector2(pressTextPosition.X + pressTextWidth, pressTextPosition.Y);
+
+  // Draw the background image stretched to fit the screen
+  spriteBatch.Draw(main_menu_background, new Rectangle(0, 0, graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height), Color.White);
+
+  // Draw the logo
+  spriteBatch.Draw(logo, logoPosition, Color.White);
+
+  // Draw the "Press" text
+  spriteBatch.DrawString(menuFont, "Press ", pressTextPosition, Color.White);
+
+  // Draw the Enter key texture
+  spriteBatch.Draw(enterKeyTexture, enterKeyPosition, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+
+  // Draw the " to Start" text
+  spriteBatch.DrawString(menuFont, " to Start", new Vector2(enterKeyPosition.X + scaledEnterKeyWidth, pressTextPosition.Y), Color.White);
+}
+```
+
+- **DrawMainMenu** - dá ao jogador uma representação visual do *Main Menu*.
+
+```
+public static void DrawPlaying(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, List<Projectile> projectiles)
+{
+  Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
+  graphicsDevice.Clear(backgroundColor);
+
+  // Begin drawing with camera's transform matrix
+  spriteBatch.Begin(transformMatrix: camera.TransformMatrix, samplerState: SamplerState.PointClamp);
+
+  // Draw the tile map
+  for (int x = 0; x < Globals.MapWidth; x++)
+  {
+    for (int y = 0; y < Globals.MapHeight; y++)
+    {
+      Vector2 position = new Vector2(x * Globals.TileWidth * Globals.texture_scale_factor, y * Globals.TileHeight * Globals.texture_scale_factor);
+
+      int tileType = tileMap[x, y];
+
+      Texture2D tileTexture = GetTextureForTileType(tileType, x, y);
+
+      // Draw the tile with scaling applied
+      spriteBatch.Draw(tileTexture, position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+
+      if (tileType == 3 && playerSpawn == false) // Assuming tileType 3 represents the tile where the player should be drawn
+      {
+        playerStartPosition = new Vector2(position.X + 1, position.Y);
+        // Calculate player position on top of this tile
+        player.Position = new Vector2(position.X + 1, position.Y);
+        playerSpawn = true;
+      }
+    }
+  }
+
+  // Draw the player
+  player.Draw(spriteBatch);
+
+  foreach (Projectile projectile in projectiles)
+  {
+    projectile.Draw(spriteBatch);
+  }
+
+  // Draw enemies
+  foreach (Enemy enemy in enemies)
+  {
+    enemy.Draw(spriteBatch);
+  }
+
+  spriteBatch.End();
+
+  // Draw debug menu if visible
+  if (Globals.debugMenuVisible)
+  {
+    DrawDebugMenu(spriteBatch, defaultFont, collisionObjects, graphicsDevice, player, projectiles, camera, enemies);
+  }
+
+  // Begin a new sprite batch for UI elements
+  spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+
+  // Draw the timer
+  int minutes = (int)(remainingTime / 60);
+  int seconds = (int)(remainingTime % 60);
+  string timerText = $"{minutes:D2}:{seconds:D2}";
+
+  // Measure the width of the text
+  Vector2 textSize = Game1.defaultFont.MeasureString(timerText);
+
+  // Calculate the position to center the text on the X axis
+  float xPosition = (graphicsDevice.Viewport.Width - textSize.X) / 2;
+  Vector2 position_timer = new Vector2(xPosition, 50);
+
+  // Draw the centered text
+  spriteBatch.DrawString(timerFont, timerText, position_timer, Color.White);
+
+  string scoreText = $"{player.Score}";
+  Vector2 position_score = new Vector2(50, 50);
+
+  // Draw the centered text
+  spriteBatch.DrawString(timerFont, scoreText, position_score, Color.White);
+
+  spriteBatch.End();
+}
+```
+
+- **DrawPlaying** - gera o conteúdo do jogo para o jogador podr ver.
+
+```
+ public static void DrawPaused(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice)
+{
+  spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+
+  // Draw the paused screen
+  string text = "Game Paused. Press P to Resume";
+  Vector2 textSize = timerFont.MeasureString(text);
+  float xPosition = (graphicsDevice.Viewport.Width - textSize.X) / 2;
+  float yPosition = (graphicsDevice.Viewport.Height - textSize.Y) / 2;
+  spriteBatch.DrawString(timerFont, text, new Vector2(xPosition, yPosition), Color.White);
+  spriteBatch.End();
+}
+```
+
+- **DrawPaused** - apresenta ao jogador o menu de pausa.
+
+```
+public static void DrawGameOver(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice)
+{
+  spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+  string text = "Game Over. Press Enter to Return to Main Menu";
+  Vector2 textSize = timerFont.MeasureString(text);
+  float xPosition = (graphicsDevice.Viewport.Width - textSize.X) / 2;
+  float yPosition = (graphicsDevice.Viewport.Height - textSize.Y) / 2;
+  spriteBatch.DrawString(timerFont, text, new Vector2(xPosition, yPosition), Color.White);
+
+  // End drawing with the blur effect
+  spriteBatch.End();
+}
+```
+
+- **DrawGameOver** - apresenta ao jogador o ecra *Game Over*.
+
+```
+public static void StartGame(GraphicsDevice graphicsDevice)
+{
+  tileMap = MapLoader.LoadMapFromFile("level1_Big.txt");
+
+  // Placeholder position of the player
+  playerStartPosition = new Vector2(100, 100);
+
+  player = new Player(player_sprite, playerStartPosition);
+
+  collisionObjects = Collision.CreateCollisionObjects(graphicsDevice, tileMap);
+
+  // Initialize camera with starting position
+  camera = new Camera(graphicsDevice, Vector2.Zero);
+
+  remainingTime = initialTime;
+  timerRunning = true;
+
+  SpawnEnemies(20);
+}
+```
+
+- **StartGame** - inicializa o jogo quando o jogador começa.
+
+```
+public static void SpawnEnemies(int count)
+{
+  Random random = new Random();
+  int spawnedCount = 0;
+
+  while (spawnedCount < count && enemies.Count < Globals.MaxEnemies)
+  {
+    // Generate random position within map bounds
+    int x = random.Next(1, Globals.MapWidth - 1); // Ensure x is not on the boundary
+    int y = random.Next(1, Globals.MapHeight - 1); // Ensure y is not on the boundary
+
+    // Check if the tile and its neighbors are valid for spawning
+    if (IsValidSpawnTile(x, y))
+    {
+      // Calculate position in world coordinates
+      Vector2 position = new Vector2(x * Globals.TileWidth, y * Globals.TileHeight);
+
+      // Create enemy object and add to list
+      Enemy enemy = new Enemy(skeleton_texture, position);
+      enemies.Add(enemy);
+
+      spawnedCount++;
+    }
+  }
+}
+```
+
+- **SpawnEnemies** - trata da adição d inimigos no jogo.
+
+```
+private static bool IsValidSpawnTile(int x, int y)
+{
+  // Check if the current tile is not a wall or empty
+  if (tileMap[x, y] == 0 || tileMap[x, y] == 2 || tileMap[x, y] == 3)
+    return false;
+
+  // Check surrounding tiles to ensure they are not walls or other invalid tiles
+  for (int dx = -1; dx <= 1; dx++)
+  {
+    for (int dy = -1; dy <= 1; dy++)
+    {
+      if (dx == 0 && dy == 0)
+        continue; // Skip the current tile
+
+      int nx = x + dx;
+      int ny = y + dy;
+
+      // Ensure nx and ny are within bounds
+      if (nx < 0 || nx >= Globals.MapWidth || ny < 0 || ny >= Globals.MapHeight)
+        return false;
+
+      // Check neighboring tile
+      if (tileMap[nx, ny] == 0 || tileMap[nx, ny] == 2 || tileMap[nx, ny] == 3)
+        return false;
+    }
+  }
+
+  return true;
+}
+```
+
+- **IsValidSpawn** - verifica se o espaço está vazio para adicionar inimigos.
+
+---
+
+### Camera.cs
+
+Esta classe trata de tudo em relação à camara que segue o jogador.
+
+```
+ private GraphicsDevice graphicsDevice;
+
+public Vector2 Position { get; private set; }
+public Matrix TransformMatrix => Matrix.CreateTranslation(-Position.X, -Position.Y, 0);
+```
+
+Globais necessárias para a classe.
+
+```
+public Camera(GraphicsDevice graphicsDevice, Vector2 initialPosition)
+{
+  this.graphicsDevice = graphicsDevice;
+  Position = initialPosition;
+}
+```
+
+- **Camera** - prepara a cámara, centralizando-a ao jogador.
+
+```
+public void Follow(Vector2 targetPosition)
+{
+  // Adjust the camera's position to keep the target centered on the screen
+  Position = targetPosition - new Vector2(graphicsDevice.Viewport.Width / 2, graphicsDevice.Viewport.Height / 2);
+}
+```
+
+- **Follow** - garante que a cámara siga o jogador no decorrer do jogo.
+
+---
+
+### Circle.cs
+
+Gera uma classe que é utilizada maioritariamente nas colisões.
+
+```
+public Vector2 Center { get; set; }
+public float Radius { get; set; }
+
+public Circle(Vector2 center, float radius)
+{
+  Center = center;
+  Radius = radius;
+}
+```
+
+Criação da variável para ser usada em outras funções.
+
+```
+public bool Contains(Vector2 point)
+{
+  float distanceSquared = Vector2.DistanceSquared(Center, point);
+  return distanceSquared <= (Radius * Radius);
+}
+```
+
+- **Contains** - verifica se algo está contido dentro do círculo.
+
+```
+public bool Intersects(Rectangle rectangle, Circle playerBounds)
+{
+  // Find the closest point to the circle within the rectangle
+  float closestX = MathHelper.Clamp(playerBounds.Center.X, rectangle.Left, rectangle.Right);
+  float closestY = MathHelper.Clamp(playerBounds.Center.Y, rectangle.Top, rectangle.Bottom);
+
+  // Calculate the distance between the circle's center and this closest point
+  float distanceX = playerBounds.Center.X - closestX;
+  float distanceY = playerBounds.Center.Y - closestY;
+
+  // If the distance is less than the circle's radius, there's an intersection
+  float distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+  return distanceSquared < (Radius * Radius);
+}
+```
+
+- **Intersects** - verifica se algo interseta o círculo.
+
+```
+public static void DrawCircle(SpriteBatch spriteBatch, Texture2D texture, Vector2 position, int radius, Color color)
+{
+  position.X += radius;
+  position.Y += radius;
+  spriteBatch.Draw(texture, position - new Vector2(radius), null, color, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+}
+```
+
+- **DrawCircle** - cria o círculo para ser usado nas colisiões.
+
+---
+
+### Collision.cs
+
+Trata de tudo a envolver com as colisões do jogador com o resto do jogo.
+
+```
+public Rectangle Bounds { get; private set; }
+
+public Collision(Rectangle bounds)
+{
+  Bounds = bounds;
+}
+```
+
+Criação da variável para ser usada nas colisões.
+
+```
+public static bool Collides(Circle circle, Rectangle rect)
+{
+  // Find the closest point on the rectangle to the circle's center
+  float closestX = MathHelper.Clamp(circle.Center.X, rect.Left, rect.Right);
+  float closestY = MathHelper.Clamp(circle.Center.Y, rect.Top, rect.Bottom);
+
+  // Calculate the distance between the circle's center and this closest point
+  float distanceX = circle.Center.X - closestX;
+  float distanceY = circle.Center.Y - closestY;
+
+  // If the distance is less than the circle's radius, an intersection occurs
+  float distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+  return distanceSquared < (circle.Radius * circle.Radius);
+}
+```
+
+- **Collides** - trata das colisões entre retângulos e círculos.
+
+```
+public bool CollidesWith(Rectangle otherBounds)
+{
+  return Bounds.Intersects(otherBounds);
+}
+```
+
+- **CollidesWith** - trata das colisões entre retângulos.
+
+```
+public static bool CircleCircleCollision(Circle circle1, Circle circle2)
+{
+  float distanceSquared = Vector2.DistanceSquared(circle1.Center, circle2.Center);
+  float radiusSumSquared = (circle1.Radius + circle2.Radius) * (circle1.Radius + circle2.Radius);
+  return distanceSquared <= radiusSumSquared;
+}
+```
+
+- **CircleCircleCollision** - trata das colisões entre círculos.
+
+```
+public static List<Collision> CreateCollisionObjects(GraphicsDevice GraphicsDevice, int[,] tileMap)
+{
+  List<Collision> collisionObjects = new List<Collision>();
+
+  // Calculate offset to center the map on the screen
+  int offsetX = (GraphicsDevice.Viewport.Width - (Globals.MapWidth * Globals.TileWidth * (int)Globals.texture_scale_factor)) / 2;
+  int offsetY = (GraphicsDevice.Viewport.Height - (Globals.MapHeight * Globals.TileHeight * (int)Globals.texture_scale_factor)) / 2;
+  offsetX = 0;
+  offsetY = 0;
+
+  // Iterate over tileMap to find collision objects and create corresponding objects
+  for (int x = 0; x < Globals.MapWidth; x++)
+  {
+    for (int y = 0; y < Globals.MapHeight; y++)
+    {
+      // Identify the type of collision object based on the tile value
+      int tileType = tileMap[x, y];
+
+      // Check if the tile represents a collision object
+      if (IsCollisionObject(tileType))
+      {
+        // Calculate position for the collision object without applying scale factor
+        int xPos = offsetX + x * Globals.TileWidth * (int)Globals.texture_scale_factor;
+        int yPos = offsetY + y * Globals.TileHeight * (int)Globals.texture_scale_factor;
+        Rectangle boundsFullTile = new Rectangle(xPos, yPos, Globals.TileWidth * (int)Globals.texture_scale_factor, Globals.TileHeight * (int)Globals.texture_scale_factor);
+
+        // Create a collision object based on its type
+        Collision collisionObject;
+        switch (tileType)
+        {
+          case 2: // Wall
+            Rectangle bounds = new Rectangle(xPos, yPos, Globals.TileWidth * (int)Globals.texture_scale_factor, Globals.TileHeight * (int)Globals.texture_scale_factor);
+            collisionObject = new Collision(bounds);
+            break;
+          // Add more cases for other types of collision objects
+          default:
+            // Handle other types of collision objects
+            collisionObject = new Collision(boundsFullTile);
+            break;
+        }
+
+        // Add the collision object to the list
+        collisionObjects.Add(collisionObject);
+      }
+    }
+  }
+
+  return collisionObjects;
+}
+```
+
+- **CreateCollisionObjects** - trata das colisões entre o jogador e as paredes do mapa.
+
+---
+
+### Player.cs
+
+Trata de tudo que precisamos para o jogador, atribuir valores à velocidade, vida, etc. assim como interações do jogador com o resto do jogo.
+
+```
+public void Update(GameTime gameTime)
+{
+  // Get the elapsed time since the last frame
+  float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+  
+  if (isInvulnerable)
+  {
+    invulnerabilityTimer -= deltaTime;
+    if (invulnerabilityTimer <= 0)
+    {
+      isInvulnerable = false;
+    }
+  }
+
+  // Get the keyboard state
+  KeyboardState keyboardState = Keyboard.GetState();
+
+  // Calculate player velocity based on keyboard input
+  Vector2 newVelocity = Vector2.Zero;
+  if (keyboardState.IsKeyDown(Keys.Left) || keyboardState.IsKeyDown(Keys.A))
+  {
+    newVelocity.X -= Speed; // Move left
+  }
+  if (keyboardState.IsKeyDown(Keys.Right) || keyboardState.IsKeyDown(Keys.D))  
+  {
+    newVelocity.X += Speed; // Move right
+  }
+  if (keyboardState.IsKeyDown(Keys.Up) || keyboardState.IsKeyDown(Keys.W))
+  {
+    newVelocity.Y -= Speed; // Move up
+  }
+  if (keyboardState.IsKeyDown(Keys.Down) || keyboardState.IsKeyDown(Keys.S))
+  {
+    newVelocity.Y += Speed; // Move down
+  }
+
+  // Update the velocity
+  Velocity = newVelocity;
+
+  // Update the position based on velocity
+  Position += Velocity * deltaTime;
+
+  UpdateBounds();
+}
+```
+
+- **Update** - vai atualizando o estado do jogador (se está a mexer, atacar, etc).
+
+```
+public void UpdateBounds()
+{
+  // Assuming the player's texture size is 16x16
+  int radius = (int)(8 * Globals.texture_scale_factor);
+  Vector2 center = Position + new Vector2(texture.Width / 2, texture.Height / 2) * Globals.texture_scale_factor;
+  Bounds = new Circle(center, radius);
+}
+```
+
+- **UpdateBounds** - atualiza os limites do jogador.
+
+```
+public void TakeDamage(int damage)
+{
+  if (!isInvulnerable)
+  {
+    CurrentHealth -= damage;
+    if (CurrentHealth < 0)
+    {
+      IsDead = true;
+      return;
+    }
+    isInvulnerable = true;
+    invulnerabilityTimer = invulnerabilityDuration;
+  }
+}
+```
+
+- **TakeDamage** - atualiza a vida do jogador e avisa quando o jogador morre assim como quando está invulnerável.
+
+```
+public void IncrementScore(int amount)
+{
+  Score += amount;
+}
+```
+
+- **IncrementScore** - atualiza o score do jogador.
+
+```
+public void Draw(SpriteBatch spriteBatch)
+{
+  spriteBatch.Draw(texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+
+  // Draw health bar above the player
+  Vector2 healthBarPosition = new Vector2(Position.X, Position.Y - 20);
+
+  // Calculate health bar widths
+  float healthPercentage = (float)CurrentHealth / MaxHealth;
+  int healthBarGreenWidth = (int)(HealthBarWidth * healthPercentage);
+  int healthBarRedWidth = HealthBarWidth - healthBarGreenWidth;
+
+  // Draw green part of health bar
+  Rectangle healthBarGreenRect = new Rectangle((int)healthBarPosition.X, (int)healthBarPosition.Y, healthBarGreenWidth, HealthBarHeight);
+  spriteBatch.Draw(Utils.CreateRectangleTexture(spriteBatch.GraphicsDevice, healthBarGreenRect.Width, healthBarGreenRect.Height, Color.Green), healthBarGreenRect, Color.Green);
+
+  // Draw red part of health bar (if any)
+  if (healthBarRedWidth > 0)
+  {
+    Rectangle healthBarRedRect = new Rectangle((int)healthBarPosition.X + healthBarGreenWidth, (int)healthBarPosition.Y, healthBarRedWidth, HealthBarHeight);
+    spriteBatch.Draw(Utils.CreateRectangleTexture(spriteBatch.GraphicsDevice, healthBarRedRect.Width, healthBarRedRect.Height, Color.Red), healthBarRedRect, Color.Red);
+  }
+}
+```
+
+- **Draw** - cria o personagem do jogador, com uma barra de hp.
+
+---
+
+### Projectile.cs
+
+Esta classe está em carregue da criação e interação dos projéteis do jogador com o resto do jogo.
+
+```
+public Vector2 Position { get; set; }
+public Vector2 Velocity { get; set; }
+public static int DespawnDistance { get; set; }
+public Texture2D Texture { get; set; }
+public Circle Bounds { get; private set; } // Hitbox for the projectile
+
+public Projectile(Texture2D texture, Vector2 position, Vector2 velocity)
+{
+  Texture = texture;
+  Position = position;
+  Velocity = velocity;
+
+  DespawnDistance = 3000;
+
+  // Define bounds with a radius matching half of the projectile texture's width
+  Bounds = new Circle(position, texture.Width / 2);
+}
+```
+
+Criação da variável que representará o projétil do jogador.
+
+```
+public void Update(float elapsedSeconds)
+{
+  // Move the projectile based on its velocity and the elapsed time
+  Position += Velocity * elapsedSeconds;
+
+  // Update the position of the bounds
+  Bounds = new Circle(Position, Bounds.Radius);
+}
+```
+
+- **Update** - atualiza a posição dos projéteis.
+
+```
+public int GetBoundsRadius()
+{
+  return (int)Bounds.Radius;
+}
+```
+
+- **GetBoundsRadius** - atualiza as colisões dos projéteis.
+
+```
+public void Draw(SpriteBatch spriteBatch)
+{
+  // Draw the projectile's texture centered at the projectile's position
+  spriteBatch.Draw(Texture, Position - new Vector2(Texture.Width / 2, Texture.Height / 2), Color.White);
+}
+```
+
+- **Draw** - cria o projétil de forma a ser vísivel ao jogador.
+
+---
+
+### Enemy.cs
+
+Está encarregue de criar os inímigos assim como outras funções.
+
+```
+public Vector2 Position { get; set; }
+public Texture2D Texture { get; set; }
+public Circle Bounds { get; private set; } // Hitbox for the enemy
+public int Health { get; private set; }
+public int Damage { get; private set; }
+
+private float speed;
+
+// Constructor
+public Enemy(Texture2D texture, Vector2 position)
+{
+  Texture = texture;
+  Position = position;
+
+  // Calculate the hitbox radius based on the texture scale factor
+  float scaleFactor = Globals.texture_scale_factor;
+  float scaledRadius = texture.Width * scaleFactor * 0.5f;
+
+  // Define bounds with the scaled radius
+  Bounds = new Circle(position + new Vector2(scaledRadius), scaledRadius);
+  Health = Globals.default_enemy_hp; // Set initial health
+  speed = Globals.default_enemy_speed; // Speed of the enemy
+  Damage = Globals.default_enemy_damage;
+}
+```
+
+Criação das propriedades do inimigo.
+
+```
+public void Update(GameTime gameTime, Vector2 playerPosition, List<Collision> collisionObjects, List<Enemy> otherEnemies)
+{
+  if(Game1.currentState == Game1.GameState.Playing)
+  {
+    // Calculate direction towards player
+    Vector2 direction = playerPosition - Position;
+    direction.Normalize();
+
+    // Calculate new position
+    Vector2 newPosition = Position + direction * speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+    // Check for potential collisions with walls
+    Circle newBounds = new Circle(newPosition + new Vector2(Bounds.Radius), Bounds.Radius);
+    foreach (var collisionObject in collisionObjects)
+    {
+      if (Collision.Collides(newBounds, collisionObject.Bounds))
+      {
+        return; // If collision detected, do not move
+      }
+    }
+
+    // Check for potential collisions with other enemies
+    foreach (var enemy in otherEnemies)
+    {
+      if (enemy == this) continue;
+
+      if (Collision.CircleCircleCollision(newBounds, enemy.Bounds))
+      {
+        // Calculate repulsion vector
+        Vector2 repulsion = newPosition - enemy.Position;
+        float distance = repulsion.Length();
+        if (distance == 0)
+        {
+          // If the enemies are exactly at the same position, create a small random vector
+          repulsion = new Vector2(0.1f, 0.1f);
+          distance = repulsion.Length();
+        }
+
+        // Normalize repulsion vector and calculate overlap
+        repulsion.Normalize();
+        float overlap = Bounds.Radius + enemy.Bounds.Radius - distance;
+
+        // Adjust the newPosition based on the overlap
+        newPosition += repulsion * overlap * 0.5f;
+      }
+    }
+
+    // Update position and bounds
+    Position = newPosition;
+    Bounds = new Circle(Position + new Vector2(Bounds.Radius), Bounds.Radius);
+  }
+}
+```
+
+- **Update** - atualiza a posição e colisão do inimigo.
+
+```
+ public void TakeDamage(int damage, Player player)
+{
+  Health -= damage;
+  if (Health <= 0)
+  {
+    // Handle enemy death (e.g., remove from the game)
+    Health = 0; // Ensure health doesn't go negative
+    // Remove the enemy from the game
+    // For example, you can remove it from a list of active enemies
+    // Assuming enemiesList is a list containing all active enemies
+    if (Game1.enemies.Contains(this))
+    {
+      Game1.enemies.Remove(this);
+      player.IncrementScore(100);
+    }
+  }
+}
+```
+
+- ***TakeDamage*** - atualiza a vida do inimigo assim como o estado deles (vivos ou mortos).
+
+```
+public void Draw(SpriteBatch spriteBatch)
+{
+  spriteBatch.Draw(Texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+}
+```
+
+- **Draw** - apresenta o inimigo de forma visível ao jogador.
+
+--- 
+
+### Game1.cs
+
+```
+private GraphicsDeviceManager _graphics;
+private SpriteBatch _spriteBatch;
+
+public static int[,] tileMap; // Variable to store the loaded tile map
+
+public static Texture2D main_menu_background;
+public static Texture2D logo;
+public static Texture2D enterKeyTexture;
+public static Texture2D floor_tile;
+public static Texture2D floor_tile2;
+public static Texture2D floor_tile3;
+public static Texture2D floor_tile4;
+public static Texture2D wall_top_tile;
+public static Texture2D square_player_spawn;
+public static Texture2D skeleton_texture;
+public static Texture2D player_sprite;
+public static Texture2D empty_tile;
+public static Texture2D projectileTexture;
+private Texture2D customCursorTexture;
+public static float timeSinceLastShot = 0f;
+
+public static Camera camera;
+
+public static SpriteFont defaultFont;
+public static SpriteFont timerFont;
+
+public static List<Collision> collisionObjects;
+
+public List<Projectile> projectiles = new List<Projectile>();
+public static List<Enemy> enemies = new List<Enemy>();
+
+public static Player player;
+
+public static double initialTime = Globals.timer_in_seconds; // Initial time in seconds
+public static double remainingTime;
+public static bool timerRunning;
+
+public static Vector2 playerStartPosition;
+
+public static bool playerSpawn = false;
+
+public static bool wasRKeyPressed = false;
+public static bool wasF3Pressed = false;
+public static bool wasPKeyPressed = false;
+public static bool wasEnterKeyPressed = false;
+
+public static bool isPaused = false;
+
+public static GameState currentState;
+
+public static float elapsedTimeTotal = 0f;
+
+public static float spawnTimer = 0f; // Timer for enemy spawning
+public static float spawnInterval = 5f; // Interval in seconds between enemy spawns
+
+public enum GameState
+{
+  MainMenu,
+  Playing,
+  Paused,
+  GameOver
+}
+
+public Game1()
+{
+  _graphics = new GraphicsDeviceManager(this);
+  Content.RootDirectory = "Content";
+  IsMouseVisible = true;
+  _graphics.IsFullScreen = true;
+  _graphics.PreferredBackBufferWidth = 1920;
+  _graphics.PreferredBackBufferHeight = 1080;
+
+  IsFixedTimeStep = false; // Remove FPS cap
+  _graphics.SynchronizeWithVerticalRetrace = false; // Disable vsync
+
+  _graphics.ApplyChanges();
+
+  // LoadContent before initializing player object so the texture is loaded
+  LoadContent();
+
+  // Set initial game state
+  currentState = GameState.MainMenu;
+
+  Utils.StartGame(GraphicsDevice);
+}
+```
+
+Tudo qué preciso para iniciar o jogo assim como formas de identificar o estado jogo.
+
+```
+protected override void Initialize()
+{
+  Utils.selectedFloorTextures = new Texture2D[Globals.MapWidth, Globals.MapHeight];
+
+  MouseCursor customCursor = Utils.ScaleCursorTexture(GraphicsDevice, customCursorTexture, Globals.cursor_texture_scale_factor);
+
+  // Set the custom cursor
+  Mouse.SetCursor(customCursor);
+
+  base.Initialize();
+}
+```
+
+- **Initialize** - inicia o jogo.
+
+```
+protected override void LoadContent()
+{
+  _spriteBatch = new SpriteBatch(GraphicsDevice);
+  main_menu_background = Content.Load<Texture2D>("main_menu_background_blur");
+  logo = Content.Load<Texture2D>("logo");
+  enterKeyTexture = Content.Load<Texture2D>("pxkw_enter");
+  floor_tile = Content.Load<Texture2D>("floor_tile");
+  floor_tile2 = Content.Load<Texture2D>("floor_tile2");
+  floor_tile3 = Content.Load<Texture2D>("floor_tile3");
+  floor_tile4 = Content.Load<Texture2D>("floor_tile4");
+  wall_top_tile = Content.Load<Texture2D>("wall_top_tile");
+  square_player_spawn = Content.Load<Texture2D>("square_player_spawn");
+  empty_tile = Content.Load<Texture2D>("empty_tile");
+  player_sprite = Content.Load<Texture2D>("priest1_v1_1");
+  projectileTexture = Content.Load<Texture2D>("projectile");
+  skeleton_texture = Content.Load<Texture2D>("skeleton2_v2_1");
+
+  defaultFont = Content.Load<SpriteFont>("TestFont");
+  timerFont = Content.Load<SpriteFont>("Timer");
+
+  customCursorTexture = Content.Load<Texture2D>("cursor");
+}
+```
+
+- **LoadContent** - carrega todo o ceonteúdo necessário para criar o jogo.
+
+```
+protected override void Update(GameTime gameTime)
+{
+  float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+  if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+    Exit();
+
+  switch (currentState)
+  {
+    case GameState.MainMenu:
+      Utils.UpdateMainMenu(gameTime, GraphicsDevice);
+      break;
+    case GameState.Playing:
+      Utils.UpdatePlaying(gameTime, deltaTime, player, projectiles);
+      break;
+    case GameState.Paused:
+      Utils.UpdatePaused(gameTime);
+      break;
+    case GameState.GameOver:
+      Utils.UpdateGameOver(gameTime);
+      break;
+  }
+
+  Utils.UpdateFPS(gameTime);
+
+  base.Update(gameTime);
+}
+```
+
+- **Update** - vai atualizando o estado do jogo.
+
+```
+protected override void Draw(GameTime gameTime)
+{
+  Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
+  GraphicsDevice.Clear(backgroundColor);
+
+  switch (currentState)
+  {
+    case GameState.MainMenu:
+      _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+      Utils.DrawMainMenu(_spriteBatch, main_menu_background, logo, enterKeyTexture, timerFont, GraphicsDevice);
+      _spriteBatch.End();
+      break;
+    case GameState.Playing:
+      Utils.DrawPlaying(_spriteBatch, GraphicsDevice, projectiles);
+      break;
+    case GameState.Paused:
+      Utils.DrawPaused(_spriteBatch, GraphicsDevice);
+      break;
+    case GameState.GameOver:
+      Utils.DrawGameOver(_spriteBatch, GraphicsDevice);
+      break;
+  }
+
+  base.Draw(gameTime);
+}
+```
+
+- **Draw** - apresenta o jogo dependendo do seu estado
