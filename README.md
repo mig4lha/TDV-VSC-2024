@@ -68,7 +68,6 @@ internal class Globals
 
   public static int MaxEnemies = 500;
 }
-
 ```
 
 ---
@@ -77,7 +76,7 @@ internal class Globals
 
 Esta classe trata da leitura de ficheiros e criação de mapas com base nesses ficheiro. 
 
-```
+```C#
   public int[,] LoadMap(string filePath)
   {
     // Default tile map with dimensions 1x1
@@ -144,7 +143,7 @@ Esta classe trata da leitura de ficheiros e criação de mapas com base nesses f
 
 A secção em cima trata da leitura dos ficheiros de forma a poder criar um mapa com base em letras usadas para representar cada tile do mapa.
 
-```
+```C#
   public static int[,] LoadMapFromFile(string fileName)
   {
     string workingDirectory = Environment.CurrentDirectory;
@@ -172,7 +171,7 @@ Esta secção trata da criação da instância *MapLoader* de forma a poder cria
 
 Esta classe trata de todos os menus assim como as diferentes texturas usadas no jogo assim como atualiza.
 
-```
+```C#
 private static int frameCount;
 private static float elapsedTime;
 private static float fps;
@@ -186,7 +185,7 @@ public static float FPS => fps;
 
 Todas variáveis globais a ser usadas nesta classe.
 
-```
+```C#
 public static void UpdateFPS(GameTime gameTime)
 {
   // Update FPS variables
@@ -208,7 +207,7 @@ public static void UpdateFPS(GameTime gameTime)
 
 - **UpdateFPS** - está em carregue de atualizar o contador de *frames per second*;
 
-```
+```C#
 public static void DrawDebugMenu(SpriteBatch spriteBatch, SpriteFont spriteFont, List<Collision> collisionObjects, GraphicsDevice graphics, Player player, List<Projectile> projectiles, Camera camera, List<Enemy> enemies)
 {
   string fpsText = $"FPS: {FPS:F2}";
@@ -254,7 +253,7 @@ public static void DrawDebugMenu(SpriteBatch spriteBatch, SpriteFont spriteFont,
 
 - **DrawDebugMenu** - é uma função maioritariamente usada para nós vermos se as colisões coincidem com os objetos em si.
 
-```
+```C#
 public static Texture2D CreateCircleTexture(GraphicsDevice graphicsDevice, int radius, Color color)
 {
   int diameter = radius * 2;
@@ -293,7 +292,7 @@ public static void DrawCircle(SpriteBatch spriteBatch, Texture2D texture, Vector
 - **CreateCircleTexture** - trata da criação de círculos usados no debug menu.  
 - **DrawCircle** - dá-nos uma representação visual dos círculos criados.
 
-```
+```C#
 public static Texture2D CreateRectangleTexture(GraphicsDevice graphicsDevice, int width, int height, Color color)
 {
   Texture2D rectangleTexture = new Texture2D(graphicsDevice, width, height);
@@ -306,7 +305,7 @@ public static Texture2D CreateRectangleTexture(GraphicsDevice graphicsDevice, in
 
 - **CreateRectangleTexture** - trata da criação de retângulos usados no debug menu.
 
-```
+```C#
 public static MouseCursor ScaleCursorTexture(GraphicsDevice _graphics, Texture2D originalCursorTexture, float scaleFactor)
 {
   // Calculate the scaled width and height
@@ -338,7 +337,7 @@ public static MouseCursor ScaleCursorTexture(GraphicsDevice _graphics, Texture2D
 
 - **ScaleCursorTexture** - trata da criação do cursor usado pelo jogador para poder apontar os ataques.
 
-```
+```C#
 public static Texture2D CreateColoredTexture(GraphicsDevice graphicsDevice, Color color)
 {
   Texture2D texture = new Texture2D(graphicsDevice, 1, 1);
@@ -350,7 +349,7 @@ public static Texture2D CreateColoredTexture(GraphicsDevice graphicsDevice, Colo
 
 - **CreateColoredTexture** - função extra usada para a criação de texturas
 
-```
+```C#
 public static Texture2D GetTextureForTileType(int tileType, int x, int y)
 {
   switch (tileType)
@@ -397,7 +396,7 @@ public static Texture2D GetTextureForTileType(int tileType, int x, int y)
 
 - **GetTextureForTileType** - trata da creação do chão do mapa.
 
-```
+```C#
 public static void UpdateMainMenu(GameTime gameTime, GraphicsDevice graphicsDevice)
 {
   // Handle menu input and transitions
@@ -412,7 +411,7 @@ public static void UpdateMainMenu(GameTime gameTime, GraphicsDevice graphicsDevi
 
 - **UpdateMainMenu** - atualiza o menu quando o jogador preciona no *Enter* para começar a jogar.
 
-```
+```C#
 public static void UpdatePlaying(GameTime gameTime, float deltaTime, Player player, List<Projectile> projectiles)
 {
   // Existing update logic for the playing state...
@@ -592,7 +591,7 @@ public static void UpdatePlaying(GameTime gameTime, float deltaTime, Player play
 
 - **UpdatePlaying** - trata de verificar colisões e atualizar o jogo
 
-```
+```C#
 public static void UpdateGameOver(GameTime gameTime)
 {
   // Handle game over input and transitions
@@ -608,7 +607,7 @@ public static void UpdateGameOver(GameTime gameTime)
 
 - **UpdateGameOver** - atualiza o jogo para voltar ao *Main Menu*.
 
-```
+```C#
 public static void DrawMainMenu(SpriteBatch spriteBatch, Texture2D main_menu_background, Texture2D logo, Texture2D enterKeyTexture, SpriteFont menuFont, GraphicsDevice graphicsDevice)
 {
   // Calculate the center position of the screen
@@ -662,7 +661,7 @@ public static void DrawMainMenu(SpriteBatch spriteBatch, Texture2D main_menu_bac
 
 - **DrawMainMenu** - dá ao jogador uma representação visual do *Main Menu*.
 
-```
+```C#
 public static void DrawPlaying(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, List<Projectile> projectiles)
 {
   Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
@@ -747,7 +746,7 @@ public static void DrawPlaying(SpriteBatch spriteBatch, GraphicsDevice graphicsD
 
 - **DrawPlaying** - gera o conteúdo do jogo para o jogador podr ver.
 
-```
+```C#
  public static void DrawPaused(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice)
 {
   spriteBatch.Begin(samplerState: SamplerState.PointClamp);
@@ -764,7 +763,7 @@ public static void DrawPlaying(SpriteBatch spriteBatch, GraphicsDevice graphicsD
 
 - **DrawPaused** - apresenta ao jogador o menu de pausa.
 
-```
+```C#
 public static void DrawGameOver(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice)
 {
   spriteBatch.Begin(samplerState: SamplerState.PointClamp);
@@ -781,7 +780,7 @@ public static void DrawGameOver(SpriteBatch spriteBatch, GraphicsDevice graphics
 
 - **DrawGameOver** - apresenta ao jogador o ecra *Game Over*.
 
-```
+```C#
 public static void StartGame(GraphicsDevice graphicsDevice)
 {
   tileMap = MapLoader.LoadMapFromFile("level1_Big.txt");
@@ -805,7 +804,7 @@ public static void StartGame(GraphicsDevice graphicsDevice)
 
 - **StartGame** - inicializa o jogo quando o jogador começa.
 
-```
+```C#
 public static void SpawnEnemies(int count)
 {
   Random random = new Random();
@@ -835,7 +834,7 @@ public static void SpawnEnemies(int count)
 
 - **SpawnEnemies** - trata da adição d inimigos no jogo.
 
-```
+```C#
 private static bool IsValidSpawnTile(int x, int y)
 {
   // Check if the current tile is not a wall or empty
@@ -875,7 +874,7 @@ private static bool IsValidSpawnTile(int x, int y)
 
 Esta classe trata de tudo em relação à camara que segue o jogador.
 
-```
+```C#
  private GraphicsDevice graphicsDevice;
 
 public Vector2 Position { get; private set; }
@@ -884,7 +883,7 @@ public Matrix TransformMatrix => Matrix.CreateTranslation(-Position.X, -Position
 
 Globais necessárias para a classe.
 
-```
+```C#
 public Camera(GraphicsDevice graphicsDevice, Vector2 initialPosition)
 {
   this.graphicsDevice = graphicsDevice;
@@ -894,7 +893,7 @@ public Camera(GraphicsDevice graphicsDevice, Vector2 initialPosition)
 
 - **Camera** - prepara a cámara, centralizando-a ao jogador.
 
-```
+```C#
 public void Follow(Vector2 targetPosition)
 {
   // Adjust the camera's position to keep the target centered on the screen
@@ -910,7 +909,7 @@ public void Follow(Vector2 targetPosition)
 
 Gera uma classe que é utilizada maioritariamente nas colisões.
 
-```
+```C#
 public Vector2 Center { get; set; }
 public float Radius { get; set; }
 
@@ -923,7 +922,7 @@ public Circle(Vector2 center, float radius)
 
 Criação da variável para ser usada em outras funções.
 
-```
+```C#
 public bool Contains(Vector2 point)
 {
   float distanceSquared = Vector2.DistanceSquared(Center, point);
@@ -933,7 +932,7 @@ public bool Contains(Vector2 point)
 
 - **Contains** - verifica se algo está contido dentro do círculo.
 
-```
+```C#
 public bool Intersects(Rectangle rectangle, Circle playerBounds)
 {
   // Find the closest point to the circle within the rectangle
@@ -952,7 +951,7 @@ public bool Intersects(Rectangle rectangle, Circle playerBounds)
 
 - **Intersects** - verifica se algo interseta o círculo.
 
-```
+```C#
 public static void DrawCircle(SpriteBatch spriteBatch, Texture2D texture, Vector2 position, int radius, Color color)
 {
   position.X += radius;
@@ -969,7 +968,7 @@ public static void DrawCircle(SpriteBatch spriteBatch, Texture2D texture, Vector
 
 Trata de tudo a envolver com as colisões do jogador com o resto do jogo.
 
-```
+```C#
 public Rectangle Bounds { get; private set; }
 
 public Collision(Rectangle bounds)
@@ -980,7 +979,7 @@ public Collision(Rectangle bounds)
 
 Criação da variável para ser usada nas colisões.
 
-```
+```C#
 public static bool Collides(Circle circle, Rectangle rect)
 {
   // Find the closest point on the rectangle to the circle's center
@@ -999,7 +998,7 @@ public static bool Collides(Circle circle, Rectangle rect)
 
 - **Collides** - trata das colisões entre retângulos e círculos.
 
-```
+```C#
 public bool CollidesWith(Rectangle otherBounds)
 {
   return Bounds.Intersects(otherBounds);
@@ -1008,7 +1007,7 @@ public bool CollidesWith(Rectangle otherBounds)
 
 - **CollidesWith** - trata das colisões entre retângulos.
 
-```
+```C#
 public static bool CircleCircleCollision(Circle circle1, Circle circle2)
 {
   float distanceSquared = Vector2.DistanceSquared(circle1.Center, circle2.Center);
@@ -1019,7 +1018,7 @@ public static bool CircleCircleCollision(Circle circle1, Circle circle2)
 
 - **CircleCircleCollision** - trata das colisões entre círculos.
 
-```
+```C#
 public static List<Collision> CreateCollisionObjects(GraphicsDevice GraphicsDevice, int[,] tileMap)
 {
   List<Collision> collisionObjects = new List<Collision>();
@@ -1079,7 +1078,7 @@ public static List<Collision> CreateCollisionObjects(GraphicsDevice GraphicsDevi
 
 Trata de tudo que precisamos para o jogador, atribuir valores à velocidade, vida, etc. assim como interações do jogador com o resto do jogo.
 
-```
+```C#
 public void Update(GameTime gameTime)
 {
   // Get the elapsed time since the last frame
@@ -1128,7 +1127,7 @@ public void Update(GameTime gameTime)
 
 - **Update** - vai atualizando o estado do jogador (se está a mexer, atacar, etc).
 
-```
+```C#
 public void UpdateBounds()
 {
   // Assuming the player's texture size is 16x16
@@ -1140,7 +1139,7 @@ public void UpdateBounds()
 
 - **UpdateBounds** - atualiza os limites do jogador.
 
-```
+```C#
 public void TakeDamage(int damage)
 {
   if (!isInvulnerable)
@@ -1159,7 +1158,7 @@ public void TakeDamage(int damage)
 
 - **TakeDamage** - atualiza a vida do jogador e avisa quando o jogador morre assim como quando está invulnerável.
 
-```
+```C#
 public void IncrementScore(int amount)
 {
   Score += amount;
@@ -1168,7 +1167,7 @@ public void IncrementScore(int amount)
 
 - **IncrementScore** - atualiza o score do jogador.
 
-```
+```C#
 public void Draw(SpriteBatch spriteBatch)
 {
   spriteBatch.Draw(texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
@@ -1202,7 +1201,7 @@ public void Draw(SpriteBatch spriteBatch)
 
 Esta classe está em carregue da criação e interação dos projéteis do jogador com o resto do jogo.
 
-```
+```C#
 public Vector2 Position { get; set; }
 public Vector2 Velocity { get; set; }
 public static int DespawnDistance { get; set; }
@@ -1224,7 +1223,7 @@ public Projectile(Texture2D texture, Vector2 position, Vector2 velocity)
 
 Criação da variável que representará o projétil do jogador.
 
-```
+```C#
 public void Update(float elapsedSeconds)
 {
   // Move the projectile based on its velocity and the elapsed time
@@ -1237,7 +1236,7 @@ public void Update(float elapsedSeconds)
 
 - **Update** - atualiza a posição dos projéteis.
 
-```
+```C#
 public int GetBoundsRadius()
 {
   return (int)Bounds.Radius;
@@ -1246,7 +1245,7 @@ public int GetBoundsRadius()
 
 - **GetBoundsRadius** - atualiza as colisões dos projéteis.
 
-```
+```C#
 public void Draw(SpriteBatch spriteBatch)
 {
   // Draw the projectile's texture centered at the projectile's position
@@ -1262,7 +1261,7 @@ public void Draw(SpriteBatch spriteBatch)
 
 Está encarregue de criar os inímigos assim como outras funções.
 
-```
+```C#
 public Vector2 Position { get; set; }
 public Texture2D Texture { get; set; }
 public Circle Bounds { get; private set; } // Hitbox for the enemy
@@ -1291,7 +1290,7 @@ public Enemy(Texture2D texture, Vector2 position)
 
 Criação das propriedades do inimigo.
 
-```
+```C#
 public void Update(GameTime gameTime, Vector2 playerPosition, List<Collision> collisionObjects, List<Enemy> otherEnemies)
 {
   if(Game1.currentState == Game1.GameState.Playing)
@@ -1348,7 +1347,7 @@ public void Update(GameTime gameTime, Vector2 playerPosition, List<Collision> co
 
 - **Update** - atualiza a posição e colisão do inimigo.
 
-```
+```C#
  public void TakeDamage(int damage, Player player)
 {
   Health -= damage;
@@ -1370,7 +1369,7 @@ public void Update(GameTime gameTime, Vector2 playerPosition, List<Collision> co
 
 - ***TakeDamage*** - atualiza a vida do inimigo assim como o estado deles (vivos ou mortos).
 
-```
+```C#
 public void Draw(SpriteBatch spriteBatch)
 {
   spriteBatch.Draw(Texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
@@ -1383,7 +1382,7 @@ public void Draw(SpriteBatch spriteBatch)
 
 ### Game1.cs
 
-```
+```C#
 private GraphicsDeviceManager _graphics;
 private SpriteBatch _spriteBatch;
 
@@ -1473,7 +1472,7 @@ public Game1()
 
 Tudo qué preciso para iniciar o jogo assim como formas de identificar o estado jogo.
 
-```
+```C#
 protected override void Initialize()
 {
   Utils.selectedFloorTextures = new Texture2D[Globals.MapWidth, Globals.MapHeight];
@@ -1489,7 +1488,7 @@ protected override void Initialize()
 
 - **Initialize** - inicia o jogo.
 
-```
+```C#
 protected override void LoadContent()
 {
   _spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -1516,7 +1515,7 @@ protected override void LoadContent()
 
 - **LoadContent** - carrega todo o ceonteúdo necessário para criar o jogo.
 
-```
+```C#
 protected override void Update(GameTime gameTime)
 {
   float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -1548,7 +1547,7 @@ protected override void Update(GameTime gameTime)
 
 - **Update** - vai atualizando o estado do jogo.
 
-```
+```C#
 protected override void Draw(GameTime gameTime)
 {
   Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
