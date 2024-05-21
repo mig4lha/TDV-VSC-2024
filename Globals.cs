@@ -20,12 +20,22 @@ namespace VSC
 
         public static float cursor_texture_scale_factor = 3.0f;
 
-        public static bool debugMenuVisible = true;
+        public static bool debugMenuVisible = false;
 
         public static float player_momentum_projectile_factor = 0.6f;
 
         public static int default_enemy_hp = 100;
 
         public static float default_enemy_speed = 100;
+
+        public static int default_player_hp = 100;
+
+        public static int default_enemy_damage = 25;
+
+        public static float invulnerability_time = 1.0f;
+
+        public static int timer_in_seconds = 2*60;
+
+        public static int MaxEnemies = 500;
     }
 }

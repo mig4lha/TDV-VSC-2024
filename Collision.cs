@@ -99,7 +99,7 @@ namespace VSC
                         switch (tileType)
                         {
                             case 2: // Wall
-                                Rectangle bounds = new Rectangle(xPos, yPos, Globals.TileWidth * (int)Globals.texture_scale_factor, Globals.TileHeight * (int)Globals.texture_scale_factor - 30);
+                                Rectangle bounds = new Rectangle(xPos, yPos, Globals.TileWidth * (int)Globals.texture_scale_factor, Globals.TileHeight * (int)Globals.texture_scale_factor);
                                 collisionObject = new Collision(bounds);
                                 break;
                             // Add more cases for other types of collision objects

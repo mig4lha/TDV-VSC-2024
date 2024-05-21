@@ -10,6 +10,7 @@ public class Enemy
     public Texture2D Texture { get; set; }
     public Circle Bounds { get; private set; } // Hitbox for the enemy
     public int Health { get; private set; }
+    public int Damage { get; private set; }
 
     private float speed;
 
@@ -27,60 +28,64 @@ public class Enemy
         Bounds = new Circle(position + new Vector2(scaledRadius), scaledRadius);
         Health = Globals.default_enemy_hp; // Set initial health
         speed = Globals.default_enemy_speed; // Speed of the enemy
+        Damage = Globals.default_enemy_damage;
     }
 
     // Update method
     public void Update(GameTime gameTime, Vector2 playerPosition, List<Collision> collisionObjects, List<Enemy> otherEnemies)
     {
-        // Calculate direction towards player
-        Vector2 direction = playerPosition - Position;
-        direction.Normalize();
-
-        // Calculate new position
-        Vector2 newPosition = Position + direction * speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-        // Check for potential collisions with walls
-        Circle newBounds = new Circle(newPosition + new Vector2(Bounds.Radius), Bounds.Radius);
-        foreach (var collisionObject in collisionObjects)
+        if(Game1.currentState == Game1.GameState.Playing)
         {
-            if (Collision.Collides(newBounds, collisionObject.Bounds))
-            {
-                return; // If collision detected, do not move
-            }
-        }
+            // Calculate direction towards player
+            Vector2 direction = playerPosition - Position;
+            direction.Normalize();
 
-        // Check for potential collisions with other enemies
-        foreach (var enemy in otherEnemies)
-        {
-            if (enemy == this) continue;
+            // Calculate new position
+            Vector2 newPosition = Position + direction * speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            if (Collision.CircleCircleCollision(newBounds, enemy.Bounds))
+            // Check for potential collisions with walls
+            Circle newBounds = new Circle(newPosition + new Vector2(Bounds.Radius), Bounds.Radius);
+            foreach (var collisionObject in collisionObjects)
             {
-                // Calculate repulsion vector
-                Vector2 repulsion = newPosition - enemy.Position;
-                float distance = repulsion.Length();
-                if (distance == 0)
+                if (Collision.Collides(newBounds, collisionObject.Bounds))
                 {
-                    // If the enemies are exactly at the same position, create a small random vector
-                    repulsion = new Vector2(0.1f, 0.1f);
-                    distance = repulsion.Length();
+                    return; // If collision detected, do not move
                 }
-
-                // Normalize repulsion vector and calculate overlap
-                repulsion.Normalize();
-                float overlap = Bounds.Radius + enemy.Bounds.Radius - distance;
-
-                // Adjust the newPosition based on the overlap
-                newPosition += repulsion * overlap * 0.5f;
             }
-        }
 
-        // Update position and bounds
-        Position = newPosition;
-        Bounds = new Circle(Position + new Vector2(Bounds.Radius), Bounds.Radius);
+            // Check for potential collisions with other enemies
+            foreach (var enemy in otherEnemies)
+            {
+                if (enemy == this) continue;
+
+                if (Collision.CircleCircleCollision(newBounds, enemy.Bounds))
+                {
+                    // Calculate repulsion vector
+                    Vector2 repulsion = newPosition - enemy.Position;
+                    float distance = repulsion.Length();
+                    if (distance == 0)
+                    {
+                        // If the enemies are exactly at the same position, create a small random vector
+                        repulsion = new Vector2(0.1f, 0.1f);
+                        distance = repulsion.Length();
+                    }
+
+                    // Normalize repulsion vector and calculate overlap
+                    repulsion.Normalize();
+                    float overlap = Bounds.Radius + enemy.Bounds.Radius - distance;
+
+                    // Adjust the newPosition based on the overlap
+                    newPosition += repulsion * overlap * 0.5f;
+                }
+            }
+
+            // Update position and bounds
+            Position = newPosition;
+            Bounds = new Circle(Position + new Vector2(Bounds.Radius), Bounds.Radius);
+        }
     }
 
-    public void TakeDamage(int damage)
+    public void TakeDamage(int damage, Player player)
     {
         Health -= damage;
         if (Health <= 0)
@@ -93,6 +98,7 @@ public class Enemy
             if (Game1.enemies.Contains(this))
             {
                 Game1.enemies.Remove(this);
+                player.IncrementScore(100);
             }
         }
     }
