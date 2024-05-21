@@ -1,13 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Reflection.Emit;
-using System.Runtime.InteropServices;
-using System.Text;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace VSC
 {
@@ -16,30 +10,65 @@ namespace VSC
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
-        private int[,] tileMap; // Variable to store the loaded tile map
+        public static int[,] tileMap; // Variable to store the loaded tile map
 
+        public static Texture2D main_menu_background;
+        public static Texture2D logo;
+        public static Texture2D enterKeyTexture;
         public static Texture2D floor_tile;
         public static Texture2D floor_tile2;
         public static Texture2D floor_tile3;
         public static Texture2D floor_tile4;
         public static Texture2D wall_top_tile;
         public static Texture2D square_player_spawn;
-        private Texture2D player_sprite;
+        public static Texture2D skeleton_texture;
+        public static Texture2D player_sprite;
         public static Texture2D empty_tile;
+        public static Texture2D projectileTexture;
         private Texture2D customCursorTexture;
+        public static float timeSinceLastShot = 0f;
 
-        private SpriteFont testFont;
+        public static Camera camera;
 
-        private List<Collision> collisionObjects;
+        public static SpriteFont defaultFont;
+        public static SpriteFont timerFont;
 
-        private Player player;
+        public static List<Collision> collisionObjects;
 
-        private Vector2 playerStartPosition;
+        public List<Projectile> projectiles = new List<Projectile>();
+        public static List<Enemy> enemies = new List<Enemy>();
 
-        private bool playerSpawn = false;
+        public static Player player;
 
-        private bool wasRKeyPressed = false;
-        private bool wasF3Pressed = false;
+        public static double initialTime = Globals.timer_in_seconds; // Initial time in seconds
+        public static double remainingTime;
+        public static bool timerRunning;
+
+        public static Vector2 playerStartPosition;
+
+        public static bool playerSpawn = false;
+
+        public static bool wasRKeyPressed = false;
+        public static bool wasF3Pressed = false;
+        public static bool wasPKeyPressed = false;
+        public static bool wasEnterKeyPressed = false;
+
+        public static bool isPaused = false;
+
+        public static GameState currentState;
+
+        public static float elapsedTimeTotal = 0f;
+
+        public static float spawnTimer = 0f; // Timer for enemy spawning
+        public static float spawnInterval = 5f; // Interval in seconds between enemy spawns
+
+        public enum GameState
+        {
+            MainMenu,
+            Playing,
+            Paused,
+            GameOver
+        }
 
         public Game1()
         {
@@ -55,17 +84,13 @@ namespace VSC
 
             _graphics.ApplyChanges();
 
-            tileMap = MapLoader.LoadMapFromFile("level1.txt");
-
-            // Placeholder position of the player
-            playerStartPosition = new Vector2(100, 100);
-
             // LoadContent before initializing player object so the texture is loaded
             LoadContent();
 
-            player = new Player(player_sprite, playerStartPosition);
+            // Set initial game state
+            currentState = GameState.MainMenu;
 
-            collisionObjects = Collision.CreateCollisionObjects(GraphicsDevice,tileMap);
+            Utils.StartGame(GraphicsDevice);
         }
 
         protected override void Initialize()
@@ -83,6 +108,9 @@ namespace VSC
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
+            main_menu_background = Content.Load<Texture2D>("main_menu_background_blur");
+            logo = Content.Load<Texture2D>("logo");
+            enterKeyTexture = Content.Load<Texture2D>("pxkw_enter");
             floor_tile = Content.Load<Texture2D>("floor_tile");
             floor_tile2 = Content.Load<Texture2D>("floor_tile2");
             floor_tile3 = Content.Load<Texture2D>("floor_tile3");
@@ -91,113 +119,68 @@ namespace VSC
             square_player_spawn = Content.Load<Texture2D>("square_player_spawn");
             empty_tile = Content.Load<Texture2D>("empty_tile");
             player_sprite = Content.Load<Texture2D>("priest1_v1_1");
+            projectileTexture = Content.Load<Texture2D>("projectile");
+            skeleton_texture = Content.Load<Texture2D>("skeleton2_v2_1");
 
-            testFont = Content.Load<SpriteFont>("TestFont");
+            defaultFont = Content.Load<SpriteFont>("TestFont");
+            timerFont = Content.Load<SpriteFont>("Timer");
 
             customCursorTexture = Content.Load<Texture2D>("cursor");
         }
 
         protected override void Update(GameTime gameTime)
         {
-            Utils.UpdateFPS(gameTime);
+            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            // Check if the "R" key is pressed
-            bool isRKeyPressed = Keyboard.GetState().IsKeyDown(Keys.R);
-
-            // Restart player position if "R" key is released and was pressed in the previous frame
-            if (wasRKeyPressed && !isRKeyPressed)
+            switch (currentState)
             {
-                // Reset player position to the spawn location
-                player.Position = playerStartPosition;
+                case GameState.MainMenu:
+                    Utils.UpdateMainMenu(gameTime, GraphicsDevice);
+                    break;
+                case GameState.Playing:
+                    Utils.UpdatePlaying(gameTime, deltaTime, player, projectiles);
+                    break;
+                case GameState.Paused:
+                    Utils.UpdatePaused(gameTime);
+                    break;
+                case GameState.GameOver:
+                    Utils.UpdateGameOver(gameTime);
+                    break;
             }
 
-            // Update the variable for the next frame
-            wasRKeyPressed = isRKeyPressed;
-
-            KeyboardState keyboardState = Keyboard.GetState();
-
-            // Check if F3 key is pressed and was not pressed in the previous frame
-            if (keyboardState.IsKeyDown(Keys.F3) && !wasF3Pressed)
-            {
-                // Toggle debug menu visibility
-                Globals.debugMenuVisible = !Globals.debugMenuVisible;
-            }
-
-            // Update the flag to track F3 key press
-            wasF3Pressed = keyboardState.IsKeyDown(Keys.F3);
-
-            // Store the player's current position
-            Vector2 currentPlayerPosition = player.Position;
-
-            // Update the player
-            player.Update(gameTime);
-
-            // Check for collisions between the player and walls
-            foreach (Collision collisionObject in collisionObjects)
-            {
-                if (Collision.CollidesWithCircle(player.GetBounds(), collisionObject.GetBounds()))
-                {
-                    // Reset player position to the last valid position
-                    player.Position = currentPlayerPosition;
-                }
-            }
+            Utils.UpdateFPS(gameTime);
 
             base.Update(gameTime);
         }
+
 
         protected override void Draw(GameTime gameTime)
         {
             Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
             GraphicsDevice.Clear(backgroundColor);
 
-            // Calculate offset to center the map on the screen
-            int offsetX = (GraphicsDevice.Viewport.Width - (Globals.MapWidth * Globals.TileWidth * (int)Globals.texture_scale_factor)) / 2;
-            int offsetY = (GraphicsDevice.Viewport.Height - (Globals.MapHeight * Globals.TileHeight * (int)Globals.texture_scale_factor)) / 2;
-
-            _spriteBatch.Begin();
-
-            //_spriteBatch.DrawString(testFont, "FPS: " + Utils.FPS.ToString("0.00"), new Vector2(10, 10), Color.White);
-
-            // Draw the tile map
-            for (int x = 0; x < Globals.MapWidth; x++)
+            switch (currentState)
             {
-                for (int y = 0; y < Globals.MapHeight; y++)
-                {
-                    Vector2 position = new Vector2(offsetX + x * Globals.TileWidth * Globals.texture_scale_factor, offsetY + y * Globals.TileHeight * Globals.texture_scale_factor);
-
-                    int tileType = tileMap[x, y];
-
-                    Texture2D tileTexture = Utils.GetTextureForTileType(tileType, x, y);
-
-                    // Draw the tile with scaling applied
-                    _spriteBatch.Draw(tileTexture, position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
-
-                    if (tileType == 3 && playerSpawn == false) // Assuming tileType 3 represents the tile where the player should be drawn
-                    {
-                        playerStartPosition = new Vector2(position.X + 1, position.Y);
-                        // Calculate player position on top of this tile
-                        player.Position = new Vector2(position.X + 1, position.Y);
-                        playerSpawn = true;
-                    }
-                }
-            }
-
-            // Draw the player
-            player.Draw(_spriteBatch);
-
-            _spriteBatch.End();
-
-            // Draw debug menu if visible
-            if (Globals.debugMenuVisible)
-            {
-                Utils.DrawDebugMenu(_spriteBatch, testFont, collisionObjects, GraphicsDevice, player);
+                case GameState.MainMenu:
+                    _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+                    Utils.DrawMainMenu(_spriteBatch, main_menu_background, logo, enterKeyTexture, timerFont, GraphicsDevice);
+                    _spriteBatch.End();
+                    break;
+                case GameState.Playing:
+                    Utils.DrawPlaying(_spriteBatch, GraphicsDevice, projectiles);
+                    break;
+                case GameState.Paused:
+                    Utils.DrawPaused(_spriteBatch, GraphicsDevice);
+                    break;
+                case GameState.GameOver:
+                    Utils.DrawGameOver(_spriteBatch, GraphicsDevice);
+                    break;
             }
 
             base.Draw(gameTime);
         }
-
     }
 }

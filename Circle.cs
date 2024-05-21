@@ -10,8 +10,8 @@ namespace VSC
 {
     public class Circle
     {
-        public Vector2 Center { get; }
-        public float Radius { get; }
+        public Vector2 Center { get; set; }
+        public float Radius { get; set; }
 
         public Circle(Vector2 center, float radius)
         {
