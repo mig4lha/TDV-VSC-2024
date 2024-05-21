@@ -135,6 +135,8 @@ namespace VSC
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
+            KeyboardState keyboardState = Keyboard.GetState();
+
             switch (currentState)
             {
                 case GameState.MainMenu:
@@ -148,7 +150,19 @@ namespace VSC
                     break;
                 case GameState.GameOver:
                     Utils.UpdateGameOver(gameTime);
+
+                    if (keyboardState.IsKeyDown(Keys.Enter) && !wasEnterKeyPressed)
+                    {
+                        wasEnterKeyPressed = true;
+                        Utils.ResetGame(GraphicsDevice, projectiles, enemies);
+                        currentState = GameState.MainMenu;
+                    }
                     break;
+            }
+
+            if (keyboardState.IsKeyUp(Keys.Enter))
+            {
+                wasEnterKeyPressed = false;
             }
 
             Utils.UpdateFPS(gameTime);
@@ -177,6 +191,7 @@ namespace VSC
                     break;
                 case GameState.GameOver:
                     Utils.DrawGameOver(_spriteBatch, GraphicsDevice);
+                    Utils.ResetGame(GraphicsDevice, projectiles, enemies);
                     break;
             }
 

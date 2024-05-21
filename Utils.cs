@@ -207,27 +207,32 @@ namespace VSC
 
         public static Texture2D CreateRectangleTexture(GraphicsDevice graphicsDevice, int width, int height, Color color)
         {
-            Texture2D rectangleTexture = new Texture2D(graphicsDevice, width, height);
+            Texture2D texture = new Texture2D(graphicsDevice, width, height);
             Color[] data = new Color[width * height];
-            for (int i = 0; i < data.Length; ++i) data[i] = color;
-            rectangleTexture.SetData(data);
-            return rectangleTexture;
+            for (int i = 0; i < data.Length; ++i)
+            {
+                data[i] = color;
+            }
+            texture.SetData(data);
+            return texture;
         }
+
 
         public static void UpdateMainMenu(GameTime gameTime, GraphicsDevice graphicsDevice)
         {
             // Handle menu input and transitions
             KeyboardState keyboardState = Keyboard.GetState();
 
-            if (keyboardState.IsKeyDown(Keys.Enter))
+            if (keyboardState.IsKeyDown(Keys.Enter) && !wasEnterKeyPressed)
             {
+                wasEnterKeyPressed = true;
                 currentState = GameState.Playing;
             }
         }
 
+
         public static void UpdatePlaying(GameTime gameTime, float deltaTime, Player player, List<Projectile> projectiles)
         {
-            // Existing update logic for the playing state...
             if (player.IsDead)
             {
                 currentState = GameState.GameOver;
@@ -251,6 +256,8 @@ namespace VSC
                     {
                         remainingTime = 0;
                         timerRunning = false;
+
+                        currentState = GameState.GameOver;
                     }
                 }
             }
@@ -421,10 +428,11 @@ namespace VSC
 
             if (keyboardState.IsKeyDown(Keys.Enter) && !wasEnterKeyPressed)
             {
+                wasEnterKeyPressed = true;
                 currentState = GameState.MainMenu;
             }
-            wasEnterKeyPressed = keyboardState.IsKeyDown(Keys.Enter);
         }
+
 
         public static void DrawMainMenu(SpriteBatch spriteBatch, Texture2D main_menu_background, Texture2D logo, Texture2D enterKeyTexture, SpriteFont menuFont, GraphicsDevice graphicsDevice)
         {
@@ -479,83 +487,88 @@ namespace VSC
 
         public static void DrawPlaying(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, List<Projectile> projectiles)
         {
-            Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
-            graphicsDevice.Clear(backgroundColor);
-
-            // Begin drawing with camera's transform matrix
-            spriteBatch.Begin(transformMatrix: camera.TransformMatrix, samplerState: SamplerState.PointClamp);
-
-            // Draw the tile map
-            for (int x = 0; x < Globals.MapWidth; x++)
+            if (!player.IsDead)
             {
-                for (int y = 0; y < Globals.MapHeight; y++)
+                Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
+                graphicsDevice.Clear(backgroundColor);
+
+                // Begin drawing with camera's transform matrix
+                spriteBatch.Begin(transformMatrix: camera.TransformMatrix, samplerState: SamplerState.PointClamp);
+
+                // Draw the tile map
+                for (int x = 0; x < Globals.MapWidth; x++)
                 {
-                    Vector2 position = new Vector2(x * Globals.TileWidth * Globals.texture_scale_factor, y * Globals.TileHeight * Globals.texture_scale_factor);
-
-                    int tileType = tileMap[x, y];
-
-                    Texture2D tileTexture = GetTextureForTileType(tileType, x, y);
-
-                    // Draw the tile with scaling applied
-                    spriteBatch.Draw(tileTexture, position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
-
-                    if (tileType == 3 && playerSpawn == false) // Assuming tileType 3 represents the tile where the player should be drawn
+                    for (int y = 0; y < Globals.MapHeight; y++)
                     {
-                        playerStartPosition = new Vector2(position.X + 1, position.Y);
-                        // Calculate player position on top of this tile
-                        player.Position = new Vector2(position.X + 1, position.Y);
-                        playerSpawn = true;
+                        Vector2 position = new Vector2(x * Globals.TileWidth * Globals.texture_scale_factor, y * Globals.TileHeight * Globals.texture_scale_factor);
+
+                        int tileType = tileMap[x, y];
+
+                        Texture2D tileTexture = GetTextureForTileType(tileType, x, y);
+
+                        // Draw the tile with scaling applied
+                        spriteBatch.Draw(tileTexture, position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+
+                        if (tileType == 3 && playerSpawn == false) // Assuming tileType 3 represents the tile where the player should be drawn
+                        {
+                            playerStartPosition = new Vector2(position.X + 1, position.Y);
+                            // Calculate player position on top of this tile
+                            player.Position = new Vector2(position.X + 1, position.Y);
+                            playerSpawn = true;
+                        }
                     }
                 }
+
+                // Draw the player
+                player.Draw(spriteBatch);
+
+                foreach (Projectile projectile in projectiles)
+                {
+                    projectile.Draw(spriteBatch);
+                }
+
+                // Draw enemies
+                foreach (Enemy enemy in enemies)
+                {
+                    enemy.Draw(spriteBatch);
+                }
+
+                spriteBatch.End();
+
+                // Draw debug menu if visible
+                if (Globals.debugMenuVisible)
+                {
+                    DrawDebugMenu(spriteBatch, defaultFont, collisionObjects, graphicsDevice, player, projectiles, camera, enemies);
+                }
+
+                // Begin a new sprite batch for UI elements
+                spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+
+                // Draw the timer
+                int minutes = (int)(remainingTime / 60);
+                int seconds = (int)(remainingTime % 60);
+                string timerText = $"{minutes:D2}:{seconds:D2}";
+
+                // Measure the width of the text
+                Vector2 textSize = Game1.defaultFont.MeasureString(timerText);
+
+                // Calculate the position to center the text on the X axis
+                float xPosition = (graphicsDevice.Viewport.Width - textSize.X) / 2;
+                Vector2 position_timer = new Vector2(xPosition, 50);
+
+                // Draw the centered text
+                spriteBatch.DrawString(timerFont, timerText, position_timer, Color.White);
+
+                string scoreText = $"{player.Score}";
+                Vector2 position_score = new Vector2(50, 50);
+
+                Globals.LastRecordedScore = player.Score;
+
+                // Draw the centered text
+                spriteBatch.DrawString(timerFont, scoreText, position_score, Color.White);
+
+                spriteBatch.End();
             }
-
-            // Draw the player
-            player.Draw(spriteBatch);
-
-            foreach (Projectile projectile in projectiles)
-            {
-                projectile.Draw(spriteBatch);
-            }
-
-            // Draw enemies
-            foreach (Enemy enemy in enemies)
-            {
-                enemy.Draw(spriteBatch);
-            }
-
-            spriteBatch.End();
-
-            // Draw debug menu if visible
-            if (Globals.debugMenuVisible)
-            {
-                DrawDebugMenu(spriteBatch, defaultFont, collisionObjects, graphicsDevice, player, projectiles, camera, enemies);
-            }
-
-            // Begin a new sprite batch for UI elements
-            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-
-            // Draw the timer
-            int minutes = (int)(remainingTime / 60);
-            int seconds = (int)(remainingTime % 60);
-            string timerText = $"{minutes:D2}:{seconds:D2}";
-
-            // Measure the width of the text
-            Vector2 textSize = Game1.defaultFont.MeasureString(timerText);
-
-            // Calculate the position to center the text on the X axis
-            float xPosition = (graphicsDevice.Viewport.Width - textSize.X) / 2;
-            Vector2 position_timer = new Vector2(xPosition, 50);
-
-            // Draw the centered text
-            spriteBatch.DrawString(timerFont, timerText, position_timer, Color.White);
-
-            string scoreText = $"{player.Score}";
-            Vector2 position_score = new Vector2(50, 50);
-
-            // Draw the centered text
-            spriteBatch.DrawString(timerFont, scoreText, position_score, Color.White);
-
-            spriteBatch.End();
         }
 
 
@@ -575,15 +588,29 @@ namespace VSC
         public static void DrawGameOver(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice)
         {
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-            string text = "Game Over. Press Enter to Return to Main Menu";
-            Vector2 textSize = timerFont.MeasureString(text);
-            float xPosition = (graphicsDevice.Viewport.Width - textSize.X) / 2;
-            float yPosition = (graphicsDevice.Viewport.Height - textSize.Y) / 2;
-            spriteBatch.DrawString(timerFont, text, new Vector2(xPosition, yPosition), Color.White);
 
-            // End drawing with the blur effect
+            string text = "Game Over. Press Enter to Return to Main Menu";
+            string scoreText = $"Score: {Globals.LastRecordedScore}";
+
+            Vector2 scoreTextSize = timerFont.MeasureString(scoreText);
+            Vector2 textTextSize = timerFont.MeasureString(text);
+
+            float totalHeight = scoreTextSize.Y + 200 + textTextSize.Y; // Total height of both strings plus the spacing
+
+            // Calculate the starting Y position to center the group
+            float startY = (graphicsDevice.Viewport.Height - totalHeight) / 2;
+
+            // Draw the score text
+            float xPosition = (graphicsDevice.Viewport.Width - scoreTextSize.X) / 2;
+            spriteBatch.DrawString(timerFont, scoreText, new Vector2(xPosition, startY), Color.White);
+
+            // Draw the game over text
+            xPosition = (graphicsDevice.Viewport.Width - textTextSize.X) / 2;
+            spriteBatch.DrawString(timerFont, text, new Vector2(xPosition, startY + scoreTextSize.Y + 200), Color.White);
+
             spriteBatch.End();
         }
+
 
         public static void StartGame(GraphicsDevice graphicsDevice)
         {
@@ -592,7 +619,7 @@ namespace VSC
             // Placeholder position of the player
             playerStartPosition = new Vector2(100, 100);
 
-            player = new Player(player_sprite, playerStartPosition);
+            player = new Player(player_sprite, playerStartPosition, graphicsDevice);
 
             collisionObjects = Collision.CreateCollisionObjects(graphicsDevice, tileMap);
 
@@ -601,6 +628,19 @@ namespace VSC
 
             remainingTime = initialTime;
             timerRunning = true;
+
+            SpawnEnemies(20);
+        }
+
+        public static void ResetGame(GraphicsDevice graphicsDevice, List<Projectile> projectiles, List<Enemy> enemies)
+        {
+            player = new Player(player_sprite, playerStartPosition, graphicsDevice);
+            projectiles.Clear();
+            enemies.Clear();
+            remainingTime = initialTime;
+            timerRunning = true;
+            playerSpawn = false;
+            isPaused = false;
 
             SpawnEnemies(20);
         }

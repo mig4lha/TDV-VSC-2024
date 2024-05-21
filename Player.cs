@@ -29,12 +29,15 @@ public class Player
     private const int HealthBarWidth = 50;
     private const int HealthBarHeight = 5;
 
+    private Texture2D healthBarGreenTexture;
+    private Texture2D healthBarRedTexture;
+
     private bool isInvulnerable;
     private float invulnerabilityDuration = Globals.invulnerability_time; // Duration in seconds
     private float invulnerabilityTimer;
 
     // Constructor
-    public Player(Texture2D texture, Vector2 position)
+    public Player(Texture2D texture, Vector2 position, GraphicsDevice graphicsDevice)
     {
         this.texture = texture;
         Position = position;
@@ -53,6 +56,10 @@ public class Player
         Score = 0;
 
         UpdateBounds();
+
+        // Create health bar textures
+        healthBarGreenTexture = Utils.CreateRectangleTexture(graphicsDevice, HealthBarWidth, HealthBarHeight, Color.Green);
+        healthBarRedTexture = Utils.CreateRectangleTexture(graphicsDevice, HealthBarWidth, HealthBarHeight, Color.Red);
     }
 
     // Update method
@@ -132,6 +139,8 @@ public class Player
     // Draw method
     public void Draw(SpriteBatch spriteBatch)
     {
+        if (IsDead == true) return; // Don't draw if the player is dead
+
         spriteBatch.Draw(texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
 
         // Draw health bar above the player
@@ -144,13 +153,13 @@ public class Player
 
         // Draw green part of health bar
         Rectangle healthBarGreenRect = new Rectangle((int)healthBarPosition.X, (int)healthBarPosition.Y, healthBarGreenWidth, HealthBarHeight);
-        spriteBatch.Draw(Utils.CreateRectangleTexture(spriteBatch.GraphicsDevice, healthBarGreenRect.Width, healthBarGreenRect.Height, Color.Green), healthBarGreenRect, Color.Green);
+        spriteBatch.Draw(healthBarGreenTexture, healthBarGreenRect, new Rectangle(0, 0, healthBarGreenWidth, HealthBarHeight), Color.White);
 
         // Draw red part of health bar (if any)
         if (healthBarRedWidth > 0)
         {
             Rectangle healthBarRedRect = new Rectangle((int)healthBarPosition.X + healthBarGreenWidth, (int)healthBarPosition.Y, healthBarRedWidth, HealthBarHeight);
-            spriteBatch.Draw(Utils.CreateRectangleTexture(spriteBatch.GraphicsDevice, healthBarRedRect.Width, healthBarRedRect.Height, Color.Red), healthBarRedRect, Color.Red);
+            spriteBatch.Draw(healthBarRedTexture, healthBarRedRect, new Rectangle(0, 0, healthBarRedWidth, HealthBarHeight), Color.White);
         }
     }
 }
