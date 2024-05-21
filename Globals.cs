@@ -37,5 +37,7 @@ namespace VSC
         public static int timer_in_seconds = 2*60;
 
         public static int MaxEnemies = 500;
+
+        public static int LastRecordedScore = 0;
     }
 }
