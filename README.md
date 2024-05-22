@@ -1,4 +1,4 @@
-# Vampire Survivors
+# Skull Attack
 
 Francisco Pinheiro Ribeiro a27942  
 José Miguel Cunha a22550
@@ -7,11 +7,11 @@ José Miguel Cunha a22550
 
 ## Introdução
 
-Iremos apresentar o código do nosso jogo ***Vampire Survivors***, uma recriação do jogo designado pelo mesmo título. Nesta apresentação vamos mostrar não só jogo em si como também o código usado para refazer este jogo.
+Iremos apresentar o código do nosso jogo ***Skull Attack***, uma recriação do jogo designado por ***Vampire Survivors***. Nesta apresentação vamos mostrar não só jogo em si como também o código usado para refazer este jogo.
 
-## O que é *Vampire Survivors*
+## O que é *Skull Attack*
 
-*Vampire Survivors* é um *roguelike shoot'em up* onde o jogador luta contra rondas de inimigos para tentar ver quanto tempo consegue sobreviver. O jogo em si tem estilo muito minimalista num setting gótico.
+*Skull Attack* é um *roguelike shoot'em up* onde o jogador luta contra rondas de inimigos para tentar ver quanto tempo consegue sobreviver. O jogo em si tem estilo muito minimalista num setting gótico.
 
 ---
 
