@@ -17,16 +17,16 @@ Iremos apresentar o código do nosso jogo ***Skull Attack***, uma recriação do
 
 ## Código
 
-Para este jogo, usamos as seguintes classes:
--***Globals.cs***;  
--***MapLoader.cs***;  
--***Utils.cs***;  
--***Camera.cs***;  
--***Circle.cs***;  
--***Collision.cs***;  
--***Player.cs***;  
--***Projectile.cs***;  
--***Enemy.cs***;  
+Para este jogo, usamos as seguintes classes:  
+- ***Globals.cs***;  
+- ***MapLoader.cs***;  
+- ***Utils.cs***;  
+- ***Camera.cs***;  
+- ***Circle.cs***;  
+- ***Collision.cs***;  
+- ***Player.cs***;  
+- ***Projectile.cs***;  
+- ***Enemy.cs***;  
 
 ---
 
