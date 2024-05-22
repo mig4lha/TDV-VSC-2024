@@ -11,7 +11,7 @@ Iremos apresentar o código do nosso jogo ***Skull Attack***, uma recriação do
 
 ## O que é *Skull Attack*
 
-*Skull Attack* é um *roguelike shoot'em up* onde o jogador luta contra rondas de inimigos para tentar ver quanto tempo consegue sobreviver. O jogo em si tem estilo muito minimalista num setting gótico.
+*Skull Attack* é um *roguelike shoot'em up* onde o jogador luta contra rondas, num perídodo de tempo, de inimigos para tentar ganhar o máximo número de pontos. O jogo em si tem estilo muito minimalista num setting gótico.
 
 ---
 
