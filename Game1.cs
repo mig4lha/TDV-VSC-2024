@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
 using System.Collections.Generic;
 
 namespace VSC
@@ -70,6 +71,10 @@ namespace VSC
             GameOver
         }
 
+        Song MainMenu;
+        Song Playing;
+        Song GameOver;
+
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -126,6 +131,10 @@ namespace VSC
             timerFont = Content.Load<SpriteFont>("Timer");
 
             customCursorTexture = Content.Load<Texture2D>("cursor");
+            
+            MainMenu = Content.Load<Song>("Main Menu Theme");
+            Playing = Content.Load<Song>("Playing");
+            GameOver = Content.Load<Song>("Game Over");
         }
 
         protected override void Update(GameTime gameTime)
@@ -140,15 +149,36 @@ namespace VSC
             switch (currentState)
             {
                 case GameState.MainMenu:
+                    if (MediaPlayer.Queue.ActiveSong != MainMenu)
+                    {
+                        MediaPlayer.Stop();
+                        MediaPlayer.IsRepeating = true;
+                        MediaPlayer.Volume = 0.4f;
+                        MediaPlayer.Play(MainMenu);
+                    }
                     Utils.UpdateMainMenu(gameTime, GraphicsDevice);
-                    break;
+                    break;                
                 case GameState.Playing:
+                    if (MediaPlayer.Queue.ActiveSong != Playing)
+                    {
+                        MediaPlayer.Stop();
+                        MediaPlayer.IsRepeating = true;
+                        MediaPlayer.Volume = 0.4f;
+                        MediaPlayer.Play(Playing);
+                    }
                     Utils.UpdatePlaying(gameTime, deltaTime, player, projectiles);
                     break;
                 case GameState.Paused:
                     Utils.UpdatePaused(gameTime);
                     break;
                 case GameState.GameOver:
+                    if (MediaPlayer.Queue.ActiveSong != GameOver)
+                    {
+                        MediaPlayer.Stop();
+                        MediaPlayer.IsRepeating = true;
+                        MediaPlayer.Volume = 0.4f;
+                        MediaPlayer.Play(GameOver);
+                    }          
                     Utils.UpdateGameOver(gameTime);
 
                     if (keyboardState.IsKeyDown(Keys.Enter) && !wasEnterKeyPressed)
