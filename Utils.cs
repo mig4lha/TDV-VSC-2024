@@ -6,10 +6,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Mail;
 using System.Numerics;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 using static VSC.Game1;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
@@ -234,9 +236,21 @@ namespace VSC
 
         public static void UpdatePlaying(GameTime gameTime, float deltaTime, Player player, List<Projectile> projectiles)
         {
+            float deathAnimationDuration = 3.0f;
+            float deathAnimationTimer = 0.0f;
+
             if (player.IsDead)
             {
-                currentState = GameState.GameOver;
+                // If the player is dead, start a timer for the death animation
+                deathAnimationTimer += deltaTime;
+
+                // Check if the death animation has finished playing
+                if (deathAnimationTimer >= deathAnimationDuration)
+                {
+                    // Transition to the game over state
+                    currentState = GameState.GameOver;
+                    return;
+                }
             }
 
             // Pausing game
@@ -258,7 +272,7 @@ namespace VSC
                         remainingTime = 0;
                         timerRunning = false;
 
-                        currentState = GameState.GameOver;
+                        currentState = GameState.Win;
                     }
                 }
             }
@@ -281,6 +295,32 @@ namespace VSC
 
                 // Reset the spawn timer
                 spawnTimer = 0f;
+            }
+
+            timeSinceLastShot += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            MouseState mouseState = Mouse.GetState();
+            if (mouseState.LeftButton == ButtonState.Pressed && timeSinceLastShot >= player.ProjectileFireRate)
+            {
+                Vector2 projectilePosition = player.Position + new Vector2(player.Bounds.Radius);
+
+                Vector2 directionToCursor = new Vector2(mouseState.X, mouseState.Y) - (projectilePosition - camera.Position);
+                directionToCursor.Normalize();
+
+                if (player.Velocity != Vector2.Zero)
+                {
+                    float angleBetween = (float)Math.Atan2(player.Velocity.Y, player.Velocity.X) - (float)Math.Atan2(directionToCursor.Y, directionToCursor.X);
+                    float momentumFactor = MathHelper.ToDegrees(angleBetween) * Globals.player_momentum_projectile_factor;
+                    float maxChangeAngle = 10f;
+                    momentumFactor = MathHelper.Clamp(momentumFactor, -maxChangeAngle, maxChangeAngle);
+                    float adjustedAngle = MathHelper.ToRadians(MathHelper.ToDegrees((float)Math.Atan2(directionToCursor.Y, directionToCursor.X)) + momentumFactor);
+                    directionToCursor = new Vector2((float)Math.Cos(adjustedAngle), (float)Math.Sin(adjustedAngle));
+                }
+
+                directionToCursor.Normalize();
+                Vector2 projectileVelocity = directionToCursor * player.ProjectileSpeed;
+                projectiles.Add(new Projectile(projectileTexture, projectilePosition, projectileVelocity, directionToCursor));
+                timeSinceLastShot = 0f;
             }
 
             Vector2 previousPosition = player.Position;
@@ -337,32 +377,6 @@ namespace VSC
                     player.Position = new Vector2(player.Position.X, previousPosition.Y);
                     player.UpdateBounds();
                 }
-            }
-
-            timeSinceLastShot += (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-            MouseState mouseState = Mouse.GetState();
-            if (mouseState.LeftButton == ButtonState.Pressed && timeSinceLastShot >= player.ProjectileFireRate)
-            {
-                Vector2 projectilePosition = player.Position + new Vector2(player.Bounds.Radius);
-
-                Vector2 directionToCursor = new Vector2(mouseState.X, mouseState.Y) - (projectilePosition - camera.Position);
-                directionToCursor.Normalize();
-
-                if (player.Velocity != Vector2.Zero)
-                {
-                    float angleBetween = (float)Math.Atan2(player.Velocity.Y, player.Velocity.X) - (float)Math.Atan2(directionToCursor.Y, directionToCursor.X);
-                    float momentumFactor = MathHelper.ToDegrees(angleBetween) * Globals.player_momentum_projectile_factor;
-                    float maxChangeAngle = 10f;
-                    momentumFactor = MathHelper.Clamp(momentumFactor, -maxChangeAngle, maxChangeAngle);
-                    float adjustedAngle = MathHelper.ToRadians(MathHelper.ToDegrees((float)Math.Atan2(directionToCursor.Y, directionToCursor.X)) + momentumFactor);
-                    directionToCursor = new Vector2((float)Math.Cos(adjustedAngle), (float)Math.Sin(adjustedAngle));
-                }
-
-                directionToCursor.Normalize();
-                Vector2 projectileVelocity = directionToCursor * player.ProjectileSpeed;
-                projectiles.Add(new Projectile(projectileTexture, projectilePosition, projectileVelocity));
-                timeSinceLastShot = 0f;
             }
 
             foreach (Projectile projectile in projectiles.ToList())
@@ -434,8 +448,20 @@ namespace VSC
             }
         }
 
+        public static void UpdateWin(GameTime gameTime)
+        {
+            // Handle game over input and transitions
+            KeyboardState keyboardState = Keyboard.GetState();
 
-        public static void DrawMainMenu(SpriteBatch spriteBatch, Texture2D main_menu_background, Texture2D logo, Texture2D enterKeyTexture, SpriteFont menuFont, GraphicsDevice graphicsDevice)
+            if (keyboardState.IsKeyDown(Keys.Enter) && !wasEnterKeyPressed)
+            {
+                wasEnterKeyPressed = true;
+                currentState = GameState.MainMenu;
+            }
+        }
+
+
+        public static void DrawMainMenu(SpriteBatch spriteBatch, Texture2D main_menu_background, Texture2D logo, Texture2D enterKeyTexture, SpriteFont menuFont, GraphicsDevice graphicsDevice, GameTime gameTime)
         {
             // Calculate the center position of the screen
             Vector2 screenCenter = new Vector2(graphicsDevice.Viewport.Width / 2f, graphicsDevice.Viewport.Height / 2f);
@@ -475,14 +501,17 @@ namespace VSC
             // Draw the logo
             spriteBatch.Draw(logo, logoPosition, Color.White);
 
-            // Draw the "Press" text
-            spriteBatch.DrawString(menuFont, "Press ", pressTextPosition, Color.White);
+            // Calculate the alpha value for the fade effect
+            Color fadeColor = new Color(1f, 1f, 1f, fadeTimer);
 
-            // Draw the Enter key texture
-            spriteBatch.Draw(enterKeyTexture, enterKeyPosition, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+            // Draw the "Press" text with fade effect
+            spriteBatch.DrawString(menuFont, "Press ", pressTextPosition, fadeColor);
 
-            // Draw the " to Start" text
-            spriteBatch.DrawString(menuFont, " to Start", new Vector2(enterKeyPosition.X + scaledEnterKeyWidth, pressTextPosition.Y), Color.White);
+            // Draw the Enter key texture with fade effect
+            spriteBatch.Draw(enterKeyTexture, enterKeyPosition, null, fadeColor, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+
+            // Draw the " to Start" text with fade effect
+            spriteBatch.DrawString(menuFont, " to Start", new Vector2(enterKeyPosition.X + scaledEnterKeyWidth, pressTextPosition.Y), fadeColor);
         }
 
 
@@ -589,14 +618,17 @@ namespace VSC
         public static void DrawGameOver(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice)
         {
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            spriteBatch.Draw(game_over_background, new Rectangle(0, 0, graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height), Color.White);
 
-            string text = "Game Over. Press Enter to Return to Main Menu";
+            string text1 = "GAME OVER";
+            string text2 = "Press Enter to Return to Main Menu";
             string scoreText = $"Score: {Globals.LastRecordedScore}";
 
             Vector2 scoreTextSize = timerFont.MeasureString(scoreText);
-            Vector2 textTextSize = timerFont.MeasureString(text);
+            Vector2 textTextSize = headerFont.MeasureString(text1);
+            Vector2 text2TextSize = timerFont.MeasureString(text2);
 
-            float totalHeight = scoreTextSize.Y + 200 + textTextSize.Y; // Total height of both strings plus the spacing
+            float totalHeight = scoreTextSize.Y + 200 + textTextSize.Y + text2TextSize.Y + 200; // Total height of both strings plus the spacing
 
             // Calculate the starting Y position to center the group
             float startY = (graphicsDevice.Viewport.Height - totalHeight) / 2;
@@ -607,11 +639,45 @@ namespace VSC
 
             // Draw the game over text
             xPosition = (graphicsDevice.Viewport.Width - textTextSize.X) / 2;
-            spriteBatch.DrawString(timerFont, text, new Vector2(xPosition, startY + scoreTextSize.Y + 200), Color.White);
+            spriteBatch.DrawString(headerFont, text1, new Vector2(xPosition, startY + scoreTextSize.Y + 200), Color.White);
+
+            xPosition = (graphicsDevice.Viewport.Width - text2TextSize.X) / 2;
+            spriteBatch.DrawString(timerFont, text2, new Vector2(xPosition, startY + scoreTextSize.Y + 400), Color.White);
 
             spriteBatch.End();
         }
 
+        public static void DrawWin(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice)
+        {
+            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            spriteBatch.Draw(win_background, new Rectangle(0, 0, graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height), Color.White);
+
+            string text1 = "YOU SURVIVED!";
+            string text2 = "Press Enter to Return to Main Menu";
+            string scoreText = $"Score: {Globals.LastRecordedScore}";
+
+            Vector2 scoreTextSize = timerFont.MeasureString(scoreText);
+            Vector2 textTextSize = headerFont.MeasureString(text1);
+            Vector2 text2TextSize = timerFont.MeasureString(text2);
+
+            float totalHeight = scoreTextSize.Y + 200 + textTextSize.Y + text2TextSize.Y + 200; // Total height of both strings plus the spacing
+
+            // Calculate the starting Y position to center the group
+            float startY = (graphicsDevice.Viewport.Height - totalHeight) / 2;
+
+            // Draw the score text
+            float xPosition = (graphicsDevice.Viewport.Width - scoreTextSize.X) / 2;
+            spriteBatch.DrawString(timerFont, scoreText, new Vector2(xPosition, startY), Color.White);
+
+            // Draw the rest of text
+            xPosition = (graphicsDevice.Viewport.Width - textTextSize.X) / 2;
+            spriteBatch.DrawString(headerFont, text1, new Vector2(xPosition, startY + scoreTextSize.Y + 200), Color.White);
+
+            xPosition = (graphicsDevice.Viewport.Width - text2TextSize.X) / 2;
+            spriteBatch.DrawString(timerFont, text2, new Vector2(xPosition, startY + scoreTextSize.Y + 400), Color.White);
+
+            spriteBatch.End();
+        }
 
         public static void StartGame(GraphicsDevice graphicsDevice)
         {
@@ -620,7 +686,7 @@ namespace VSC
             // Placeholder position of the player
             playerStartPosition = new Vector2(100, 100);
 
-            player = new Player(player_sprite, playerStartPosition, graphicsDevice);
+            player = new Player(playerStartPosition, graphicsDevice);
 
             collisionObjects = Collision.CreateCollisionObjects(graphicsDevice, tileMap);
 
@@ -635,7 +701,7 @@ namespace VSC
 
         public static void ResetGame(GraphicsDevice graphicsDevice, List<Projectile> projectiles, List<Enemy> enemies)
         {
-            player = new Player(player_sprite, playerStartPosition, graphicsDevice);
+            player = new Player(playerStartPosition, graphicsDevice);
             projectiles.Clear();
             enemies.Clear();
             remainingTime = initialTime;
@@ -665,7 +731,7 @@ namespace VSC
                     Vector2 position = new Vector2(x * Globals.TileWidth, y * Globals.TileHeight);
 
                     // Create enemy object and add to list
-                    Enemy enemy = new Enemy(skeleton_texture, position);
+                    Enemy enemy = new Enemy(skeletonSpritesheet, position);
                     enemies.Add(enemy);
 
                     spawnedCount++;

@@ -11,6 +11,7 @@ public class Enemy
     public Circle Bounds { get; private set; } // Hitbox for the enemy
     public int Health { get; private set; }
     public int Damage { get; private set; }
+    public SpriteAnimation Animation { get; set; }
 
     private float speed;
 
@@ -22,13 +23,15 @@ public class Enemy
 
         // Calculate the hitbox radius based on the texture scale factor
         float scaleFactor = Globals.texture_scale_factor;
-        float scaledRadius = texture.Width * scaleFactor * 0.5f;
+        float scaledRadius = texture.Width/4 * scaleFactor * 0.5f;
 
         // Define bounds with the scaled radius
         Bounds = new Circle(position + new Vector2(scaledRadius), scaledRadius);
         Health = Globals.default_enemy_hp; // Set initial health
         speed = Globals.default_enemy_speed; // Speed of the enemy
         Damage = Globals.default_enemy_damage;
+
+        Animation = new SpriteAnimation(Game1.skeletonSpritesheet, 16, 16, 0, 3, 0.1f);
     }
 
     // Update method
@@ -36,12 +39,14 @@ public class Enemy
     {
         if(Game1.currentState == Game1.GameState.Playing)
         {
+            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
             // Calculate direction towards player
             Vector2 direction = playerPosition - Position;
             direction.Normalize();
 
             // Calculate new position
-            Vector2 newPosition = Position + direction * speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            Vector2 newPosition = Position + direction * speed * deltaTime;
 
             // Check for potential collisions with walls
             Circle newBounds = new Circle(newPosition + new Vector2(Bounds.Radius), Bounds.Radius);
@@ -82,6 +87,8 @@ public class Enemy
             // Update position and bounds
             Position = newPosition;
             Bounds = new Circle(Position + new Vector2(Bounds.Radius), Bounds.Radius);
+
+            Animation.Update(deltaTime); // Update animation frame
         }
     }
 
@@ -106,6 +113,8 @@ public class Enemy
     // Draw method
     public void Draw(SpriteBatch spriteBatch)
     {
-        spriteBatch.Draw(Texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+        Vector2 newPosition = Position;
+        Animation.Draw(spriteBatch, newPosition, false, 0f, Vector2.Zero, true);
+        //spriteBatch.Draw(Texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
     }
 }
