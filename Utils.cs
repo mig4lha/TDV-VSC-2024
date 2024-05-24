@@ -83,8 +83,17 @@ namespace VSC
                 Circle.DrawCircle(spriteBatch, CreateCircleTexture(graphics, (int)enemy.Bounds.Radius, Color.Green), texturePosition, (int)enemy.Bounds.Radius, Color.Green);
             }
 
-            spriteBatch.DrawString(spriteFont, fpsText, new Vector2(10, 10), Color.White);
-            spriteBatch.DrawString(spriteFont, $"Player Position: X:{player.Position.X:F2} Y:{player.Position.Y:F2}", new Vector2(10, 30), Color.White);
+            string positionText = $"Player Position: X:{player.Position.X:F2} Y:{player.Position.Y:F2}";
+            string enemycountText = $"Enemy Count: {enemies.Count}";
+
+            // Measure the width of the text
+            Vector2 textSize = Game1.defaultFont.MeasureString(positionText);
+            Vector2 textSizeFPS = Game1.defaultFont.MeasureString(fpsText);
+            Vector2 textSizeEnemyCount = Game1.defaultFont.MeasureString(enemycountText);
+
+            spriteBatch.DrawString(spriteFont, fpsText, new Vector2(10, (graphics.Viewport.Height - textSizeFPS.Y) - textSize.Y - textSizeEnemyCount.Y - 10), Color.White);
+            spriteBatch.DrawString(spriteFont, positionText, new Vector2(10, (graphics.Viewport.Height - textSize.Y) - textSizeEnemyCount.Y - 10), Color.White);
+            spriteBatch.DrawString(spriteFont, enemycountText, new Vector2(10, (graphics.Viewport.Height - textSizeEnemyCount.Y) - 10), Color.White);
 
             spriteBatch.End();
         }
@@ -574,13 +583,17 @@ namespace VSC
                 // Begin a new sprite batch for UI elements
                 spriteBatch.Begin(samplerState: SamplerState.PointClamp);
 
+                string fpsText = $"FPS: {FPS:F2}";
+
                 // Draw the timer
                 int minutes = (int)(remainingTime / 60);
                 int seconds = (int)(remainingTime % 60);
                 string timerText = $"{minutes:D2}:{seconds:D2}";
 
+
                 // Measure the width of the text
                 Vector2 textSize = Game1.defaultFont.MeasureString(timerText);
+                Vector2 textSizeFPS = Game1.defaultFont.MeasureString(fpsText);
 
                 // Calculate the position to center the text on the X axis
                 float xPosition = (graphicsDevice.Viewport.Width - textSize.X) / 2;
@@ -597,6 +610,11 @@ namespace VSC
                 // Draw the centered text
                 spriteBatch.DrawString(timerFont, scoreText, position_score, Color.White);
 
+                if (!Globals.debugMenuVisible)
+                {
+                    spriteBatch.DrawString(defaultFont, fpsText, new Vector2((graphicsDevice.Viewport.Width - textSizeFPS.X)-20, 10), Color.White);
+                }
+                
                 spriteBatch.End();
             }
         }
