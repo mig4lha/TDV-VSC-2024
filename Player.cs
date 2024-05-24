@@ -17,6 +17,7 @@ public class Player
     public int MaxHealth { get; private set; }
     public int CurrentHealth { get; private set; }
     public bool IsDead { get; private set; }
+    public static bool IsFacingLeft { get; private set; }
     public int Score { get; private set; }
 
     // Player texture
@@ -36,8 +37,13 @@ public class Player
     private float invulnerabilityDuration = Globals.invulnerability_time; // Duration in seconds
     private float invulnerabilityTimer;
 
+    private SpriteAnimation idleAnimation;
+    private SpriteAnimation walkAnimation;
+    private SpriteAnimation deathAnimation;
+    private SpriteAnimation currentAnimation;
+
     // Constructor
-    public Player(Texture2D texture, Vector2 position, GraphicsDevice graphicsDevice)
+    public Player(Vector2 position, GraphicsDevice graphicsDevice)
     {
         this.texture = texture;
         Position = position;
@@ -60,6 +66,12 @@ public class Player
         // Create health bar textures
         healthBarGreenTexture = Utils.CreateRectangleTexture(graphicsDevice, HealthBarWidth, HealthBarHeight, Color.Green);
         healthBarRedTexture = Utils.CreateRectangleTexture(graphicsDevice, HealthBarWidth, HealthBarHeight, Color.Red);
+
+        idleAnimation = new SpriteAnimation(Game1.playerSpriteSheet, 48, 48, 0, 5, 0.1f);
+        walkAnimation = new SpriteAnimation(Game1.playerSpriteSheet, 48, 48, 16, 21, 0.1f);
+        deathAnimation = new SpriteAnimation(Game1.playerSpriteSheet, 48, 48, 88, 90, 0.1f);
+
+        currentAnimation = idleAnimation;
     }
 
     // Update method
@@ -77,27 +89,54 @@ public class Player
             }
         }
 
+        if (IsDead)
+        {
+            return;
+        }
+
         // Get the keyboard state
         KeyboardState keyboardState = Keyboard.GetState();
+
+        bool IsMoving = false;
 
         // Calculate player velocity based on keyboard input
         Vector2 newVelocity = Vector2.Zero;
         if (keyboardState.IsKeyDown(Keys.Left) || keyboardState.IsKeyDown(Keys.A))
         {
             newVelocity.X -= Speed; // Move left
+            IsMoving = true;
+            IsFacingLeft = true;
         }
         if (keyboardState.IsKeyDown(Keys.Right) || keyboardState.IsKeyDown(Keys.D))
         {
             newVelocity.X += Speed; // Move right
+            IsMoving = true;
+            IsFacingLeft = false;
         }
         if (keyboardState.IsKeyDown(Keys.Up) || keyboardState.IsKeyDown(Keys.W))
         {
             newVelocity.Y -= Speed; // Move up
+            IsMoving = true;
         }
         if (keyboardState.IsKeyDown(Keys.Down) || keyboardState.IsKeyDown(Keys.S))
         {
             newVelocity.Y += Speed; // Move down
+            IsMoving = true;
         }
+
+        if (IsMoving)
+        {
+            // Set animation to walk
+            currentAnimation = walkAnimation;
+        }
+        else
+        {
+            // Set animation to idle
+            currentAnimation = idleAnimation;
+        }
+
+        // Update current animation
+        currentAnimation.Update(deltaTime);
 
         // Update the velocity
         Velocity = newVelocity;
@@ -112,7 +151,7 @@ public class Player
     {
         // Assuming the player's texture size is 16x16
         int radius = (int)(8 * Globals.texture_scale_factor);
-        Vector2 center = Position + new Vector2(texture.Width / 2, texture.Height / 2) * Globals.texture_scale_factor;
+        Vector2 center = Position + new Vector2(16 / 2, 16 / 2) * Globals.texture_scale_factor;
         Bounds = new Circle(center, radius);
     }
 
@@ -121,7 +160,7 @@ public class Player
         if (!isInvulnerable)
         {
             CurrentHealth -= damage;
-            if (CurrentHealth < 0)
+            if (CurrentHealth <= 0)
             {
                 IsDead = true;
                 return;
@@ -141,7 +180,8 @@ public class Player
     {
         if (IsDead == true) return; // Don't draw if the player is dead
 
-        spriteBatch.Draw(texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+        //spriteBatch.Draw(texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+        currentAnimation.Draw(spriteBatch, Position, true, 0f, Vector2.Zero, false);
 
         // Draw health bar above the player
         Vector2 healthBarPosition = new Vector2(Position.X, Position.Y - 20);

@@ -14,6 +14,8 @@ namespace VSC
         public static int[,] tileMap; // Variable to store the loaded tile map
 
         public static Texture2D main_menu_background;
+        public static Texture2D game_over_background;
+        public static Texture2D win_background;
         public static Texture2D logo;
         public static Texture2D enterKeyTexture;
         public static Texture2D floor_tile;
@@ -22,7 +24,6 @@ namespace VSC
         public static Texture2D floor_tile4;
         public static Texture2D wall_top_tile;
         public static Texture2D square_player_spawn;
-        public static Texture2D skeleton_texture;
         public static Texture2D player_sprite;
         public static Texture2D empty_tile;
         public static Texture2D projectileTexture;
@@ -33,6 +34,7 @@ namespace VSC
 
         public static SpriteFont defaultFont;
         public static SpriteFont timerFont;
+        public static SpriteFont headerFont;
 
         public static List<Collision> collisionObjects;
 
@@ -40,6 +42,10 @@ namespace VSC
         public static List<Enemy> enemies = new List<Enemy>();
 
         public static Player player;
+
+        public static Texture2D playerSpriteSheet;
+        public static Texture2D skeletonSpritesheet;
+        public static Texture2D attackSpritesheet;
 
         public static double initialTime = Globals.timer_in_seconds; // Initial time in seconds
         public static double remainingTime;
@@ -53,6 +59,10 @@ namespace VSC
         public static bool wasF3Pressed = false;
         public static bool wasPKeyPressed = false;
         public static bool wasEnterKeyPressed = false;
+
+        public static float fadeTimer = 0f;
+        public static bool fadingIn = true;
+        public static float fadeSpeed = 0.8f; // Speed of the fade effect
 
         public static bool isPaused = false;
 
@@ -68,12 +78,14 @@ namespace VSC
             MainMenu,
             Playing,
             Paused,
-            GameOver
+            GameOver,
+            Win
         }
 
         Song MainMenu;
         Song Playing;
         Song GameOver;
+        Song Win;
 
         public Game1()
         {
@@ -114,6 +126,8 @@ namespace VSC
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             main_menu_background = Content.Load<Texture2D>("main_menu_background_blur");
+            game_over_background = Content.Load<Texture2D>("game_over_background_blur");
+            win_background = Content.Load<Texture2D>("win_background_blur");
             logo = Content.Load<Texture2D>("logo");
             enterKeyTexture = Content.Load<Texture2D>("pxkw_enter");
             floor_tile = Content.Load<Texture2D>("floor_tile");
@@ -123,18 +137,22 @@ namespace VSC
             wall_top_tile = Content.Load<Texture2D>("wall_top_tile");
             square_player_spawn = Content.Load<Texture2D>("square_player_spawn");
             empty_tile = Content.Load<Texture2D>("empty_tile");
-            player_sprite = Content.Load<Texture2D>("priest1_v1_1");
             projectileTexture = Content.Load<Texture2D>("projectile");
-            skeleton_texture = Content.Load<Texture2D>("skeleton2_v2_1");
 
             defaultFont = Content.Load<SpriteFont>("TestFont");
             timerFont = Content.Load<SpriteFont>("Timer");
+            headerFont = Content.Load<SpriteFont>("Header");
 
             customCursorTexture = Content.Load<Texture2D>("cursor");
             
             MainMenu = Content.Load<Song>("Main Menu Theme");
             Playing = Content.Load<Song>("Playing");
             GameOver = Content.Load<Song>("Game Over");
+            Win = Content.Load<Song>("Win");
+
+            playerSpriteSheet = Content.Load<Texture2D>("player_spritesheet");
+            attackSpritesheet = Content.Load<Texture2D>("attack_spritesheet");
+            skeletonSpritesheet = Content.Load<Texture2D>("skeleton_spritesheet");
         }
 
         protected override void Update(GameTime gameTime)
@@ -149,6 +167,24 @@ namespace VSC
             switch (currentState)
             {
                 case GameState.MainMenu:
+                    if (fadingIn)
+                    {
+                        fadeTimer += deltaTime * fadeSpeed;
+                        if (fadeTimer >= 1f)
+                        {
+                            fadeTimer = 1f;
+                            fadingIn = false;
+                        }
+                    }
+                    else
+                    {
+                        fadeTimer -= deltaTime * fadeSpeed;
+                        if (fadeTimer <= 0f)
+                        {
+                            fadeTimer = 0f;
+                            fadingIn = true;
+                        }
+                    }
                     if (MediaPlayer.Queue.ActiveSong != MainMenu)
                     {
                         MediaPlayer.Stop();
@@ -188,6 +224,23 @@ namespace VSC
                         currentState = GameState.MainMenu;
                     }
                     break;
+                case GameState.Win:
+                    if (MediaPlayer.Queue.ActiveSong != Win)
+                    {
+                        MediaPlayer.Stop();
+                        MediaPlayer.IsRepeating = true;
+                        MediaPlayer.Volume = 0.4f;
+                        MediaPlayer.Play(Win);
+                    }
+                    Utils.UpdateWin(gameTime);
+
+                    if (keyboardState.IsKeyDown(Keys.Enter) && !wasEnterKeyPressed)
+                    {
+                        wasEnterKeyPressed = true;
+                        Utils.ResetGame(GraphicsDevice, projectiles, enemies);
+                        currentState = GameState.MainMenu;
+                    }
+                    break;
             }
 
             if (keyboardState.IsKeyUp(Keys.Enter))
@@ -209,8 +262,8 @@ namespace VSC
             switch (currentState)
             {
                 case GameState.MainMenu:
-                    _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-                    Utils.DrawMainMenu(_spriteBatch, main_menu_background, logo, enterKeyTexture, timerFont, GraphicsDevice);
+                    _spriteBatch.Begin(samplerState: SamplerState.PointClamp, blendState: BlendState.NonPremultiplied);
+                    Utils.DrawMainMenu(_spriteBatch, main_menu_background, logo, enterKeyTexture, timerFont, GraphicsDevice, gameTime);
                     _spriteBatch.End();
                     break;
                 case GameState.Playing:
@@ -221,6 +274,10 @@ namespace VSC
                     break;
                 case GameState.GameOver:
                     Utils.DrawGameOver(_spriteBatch, GraphicsDevice);
+                    Utils.ResetGame(GraphicsDevice, projectiles, enemies);
+                    break;
+                case GameState.Win:
+                    Utils.DrawWin(_spriteBatch, GraphicsDevice);
                     Utils.ResetGame(GraphicsDevice, projectiles, enemies);
                     break;
             }
