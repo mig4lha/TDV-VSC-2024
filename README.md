@@ -20,7 +20,8 @@ Iremos apresentar o código do nosso jogo ***Skull Attack***, uma recriação do
 Para este jogo, usamos as seguintes classes:  
 - ***Globals.cs***;  
 - ***MapLoader.cs***;  
-- ***Utils.cs***;  
+- ***Utils.cs***;
+- **SpriteAnimation**;   
 - ***Camera.cs***;  
 - ***Circle.cs***;  
 - ***Collision.cs***;  
@@ -295,11 +296,14 @@ public static void DrawCircle(SpriteBatch spriteBatch, Texture2D texture, Vector
 ```C#
 public static Texture2D CreateRectangleTexture(GraphicsDevice graphicsDevice, int width, int height, Color color)
 {
-  Texture2D rectangleTexture = new Texture2D(graphicsDevice, width, height);
+  Texture2D texture = new Texture2D(graphicsDevice, width, height);
   Color[] data = new Color[width * height];
-  for (int i = 0; i < data.Length; ++i) data[i] = color;
-  rectangleTexture.SetData(data);
-  return rectangleTexture;
+  for (int i = 0; i < data.Length; ++i)
+  {
+    data[i] = color;
+  }
+  texture.SetData(data);
+  return texture;
 }
 ```
 
@@ -413,183 +417,213 @@ public static void UpdateMainMenu(GameTime gameTime, GraphicsDevice graphicsDevi
 
 ```C#
 public static void UpdatePlaying(GameTime gameTime, float deltaTime, Player player, List<Projectile> projectiles)
-{
-  // Existing update logic for the playing state...
-  if (player.IsDead)
-  {
-    currentState = GameState.GameOver;
-  }
+        {
+            float deathAnimationDuration = 3.0f;
+            float deathAnimationTimer = 0.0f;
 
-  // Pausing game
-  KeyboardState keyboardState = Keyboard.GetState();
-  if (keyboardState.IsKeyDown(Keys.P) && !wasPKeyPressed)
-  {
-    isPaused = !isPaused; // Toggle the pause state
-    currentState = isPaused ? GameState.Paused : GameState.Playing; // Update game state
-  }
-  wasPKeyPressed = keyboardState.IsKeyDown(Keys.P);
+            if (player.IsDead)
+            {
+                // If the player is dead, start a timer for the death animation
+                deathAnimationTimer += deltaTime;
 
-  if (!isPaused) // Only update the timer if the game is not paused
-  {
-    if (timerRunning)
-    {
-      remainingTime -= deltaTime;
-      if (remainingTime <= 0)
-      {
-        remainingTime = 0;
-        timerRunning = false;
-      }
-    }
-  }
+                // Check if the death animation has finished playing
+                if (deathAnimationTimer >= deathAnimationDuration)
+                {
+                    // Transition to the game over state
+                    currentState = GameState.GameOver;
+                    return;
+                }
+            }
 
-  keyboardState = Keyboard.GetState();
-  if (keyboardState.IsKeyDown(Keys.F3) && !wasF3Pressed)
-  {
-    Globals.debugMenuVisible = !Globals.debugMenuVisible;
-  }
-  wasF3Pressed = keyboardState.IsKeyDown(Keys.F3);
+            // Pausing game
+            KeyboardState keyboardState = Keyboard.GetState();
+            if (keyboardState.IsKeyDown(Keys.P) && !wasPKeyPressed)
+            {
+                isPaused = !isPaused; // Toggle the pause state
+                currentState = isPaused ? GameState.Paused : GameState.Playing; // Update game state
+            }
+            wasPKeyPressed = keyboardState.IsKeyDown(Keys.P);
 
-  // Update spawn timer
-  spawnTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (!isPaused) // Only update the timer if the game is not paused
+            {
+                if (timerRunning)
+                {
+                    remainingTime -= deltaTime;
+                    if (remainingTime <= 0)
+                    {
+                        remainingTime = 0;
+                        timerRunning = false;
 
-  // Check if it's time to spawn more enemies
-  if (spawnTimer >= spawnInterval && timerRunning == true)
-  {
-    int num_enemies = (int)(Globals.timer_in_seconds - remainingTime);
-    SpawnEnemies(num_enemies);
+                        currentState = GameState.Win;
+                    }
+                }
+            }
 
-    // Reset the spawn timer
-    spawnTimer = 0f;
-  }
+            keyboardState = Keyboard.GetState();
+            if (keyboardState.IsKeyDown(Keys.F3) && !wasF3Pressed)
+            {
+                Globals.debugMenuVisible = !Globals.debugMenuVisible;
+            }
+            wasF3Pressed = keyboardState.IsKeyDown(Keys.F3);
 
-  Vector2 previousPosition = player.Position;
-  player.Update(gameTime);
+            // Update spawn timer
+            spawnTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-  bool collisionDetected = false;
+            // Check if it's time to spawn more enemies
+            if (spawnTimer >= spawnInterval && timerRunning == true)
+            {
+                int num_enemies = (int)(Globals.timer_in_seconds - remainingTime);
+                SpawnEnemies(num_enemies);
 
-  foreach (Collision collisionObject in collisionObjects)
-  {
-    if (Collision.Collides(player.Bounds, collisionObject.Bounds))
-    {
-      collisionDetected = true;
-      break;
-    }
-  }
+                // Reset the spawn timer
+                spawnTimer = 0f;
+            }
 
-  if (collisionDetected)
-  {
-    player.Position = previousPosition;
-    player.UpdateBounds();
+            timeSinceLastShot += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-    player.Position = new Vector2(player.Position.X + player.Velocity.X * deltaTime, player.Position.Y);
-    player.UpdateBounds();
-    collisionDetected = false;
-    foreach (Collision collisionObject in collisionObjects)
-    {
-      if (Collision.Collides(player.Bounds, collisionObject.Bounds))
-      {
-        collisionDetected = true;
-        break;
-      }
-    }
+            MouseState mouseState = Mouse.GetState();
+            if (mouseState.LeftButton == ButtonState.Pressed && timeSinceLastShot >= player.ProjectileFireRate)
+            {
+                Vector2 projectilePosition = player.Position + new Vector2(player.Bounds.Radius);
 
-    if (collisionDetected)
-    {
-      player.Position = new Vector2(previousPosition.X, player.Position.Y);
-      player.UpdateBounds();
-    }
+                Vector2 directionToCursor = new Vector2(mouseState.X, mouseState.Y) - (projectilePosition - camera.Position);
+                directionToCursor.Normalize();
 
-    player.Position = new Vector2(player.Position.X, player.Position.Y + player.Velocity.Y * deltaTime);
-    player.UpdateBounds();
-    collisionDetected = false;
-    foreach (Collision collisionObject in collisionObjects)
-    {
-      if (Collision.Collides(player.Bounds, collisionObject.Bounds))
-      {
-        collisionDetected = true;
-        break;
-      }
-    }
+                if (player.Velocity != Vector2.Zero)
+                {
+                    float angleBetween = (float)Math.Atan2(player.Velocity.Y, player.Velocity.X) - (float)Math.Atan2(directionToCursor.Y, directionToCursor.X);
+                    float momentumFactor = MathHelper.ToDegrees(angleBetween) * Globals.player_momentum_projectile_factor;
+                    float maxChangeAngle = 10f;
+                    momentumFactor = MathHelper.Clamp(momentumFactor, -maxChangeAngle, maxChangeAngle);
+                    float adjustedAngle = MathHelper.ToRadians(MathHelper.ToDegrees((float)Math.Atan2(directionToCursor.Y, directionToCursor.X)) + momentumFactor);
+                    directionToCursor = new Vector2((float)Math.Cos(adjustedAngle), (float)Math.Sin(adjustedAngle));
+                }
 
-    if (collisionDetected)
-    {
-      player.Position = new Vector2(player.Position.X, previousPosition.Y);
-      player.UpdateBounds();
-    }
-  }
+                directionToCursor.Normalize();
+                Vector2 projectileVelocity = directionToCursor * player.ProjectileSpeed;
+                projectiles.Add(new Projectile(projectileTexture, projectilePosition, projectileVelocity, directionToCursor));
+                timeSinceLastShot = 0f;
+            }
 
-  timeSinceLastShot += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            Vector2 previousPosition = player.Position;
+            player.Update(gameTime);
 
-  MouseState mouseState = Mouse.GetState();
-  if (mouseState.LeftButton == ButtonState.Pressed && timeSinceLastShot >= player.ProjectileFireRate)
-  {
-    Vector2 projectilePosition = player.Position + new Vector2(player.Bounds.Radius);
+            bool collisionDetected = false;
 
-    Vector2 directionToCursor = new Vector2(mouseState.X, mouseState.Y) - (projectilePosition - camera.Position);
-    directionToCursor.Normalize();
+            foreach (Collision collisionObject in collisionObjects)
+            {
+                if (Collision.Collides(player.Bounds, collisionObject.Bounds))
+                {
+                    collisionDetected = true;
+                    break;
+                }
+            }
 
-    if (player.Velocity != Vector2.Zero)
-    {
-      float angleBetween = (float)Math.Atan2(player.Velocity.Y, player.Velocity.X) - (float)Math.Atan2(directionToCursor.Y, directionToCursor.X);
-      float momentumFactor = MathHelper.ToDegrees(angleBetween) * Globals.player_momentum_projectile_factor;
-      float maxChangeAngle = 10f;
-      momentumFactor = MathHelper.Clamp(momentumFactor, -maxChangeAngle, maxChangeAngle);
-      float adjustedAngle = MathHelper.ToRadians(MathHelper.ToDegrees((float)Math.Atan2(directionToCursor.Y, directionToCursor.X)) + momentumFactor);
-      directionToCursor = new Vector2((float)Math.Cos(adjustedAngle), (float)Math.Sin(adjustedAngle));
-    }
+            if (collisionDetected)
+            {
+                player.Position = previousPosition;
+                player.UpdateBounds();
 
-    directionToCursor.Normalize();
-    Vector2 projectileVelocity = directionToCursor * player.ProjectileSpeed;
-    projectiles.Add(new Projectile(projectileTexture, projectilePosition, projectileVelocity));
-    timeSinceLastShot = 0f;
-  }
+                player.Position = new Vector2(player.Position.X + player.Velocity.X * deltaTime, player.Position.Y);
+                player.UpdateBounds();
+                collisionDetected = false;
+                foreach (Collision collisionObject in collisionObjects)
+                {
+                    if (Collision.Collides(player.Bounds, collisionObject.Bounds))
+                    {
+                        collisionDetected = true;
+                        break;
+                    }
+                }
 
-  foreach (Projectile projectile in projectiles.ToList())
-  {
-    projectile.Update(deltaTime);
-    foreach (Collision collisionObject in collisionObjects)
-    {
-      if (Collision.Collides(projectile.Bounds, collisionObject.Bounds))
-      {
-        projectiles.Remove(projectile);
-        break;
-      }
-    }
-  }
+                if (collisionDetected)
+                {
+                    player.Position = new Vector2(previousPosition.X, player.Position.Y);
+                    player.UpdateBounds();
+                }
 
-  foreach (Enemy enemy in enemies.ToList())
-  {
-    enemy.Update(gameTime, player.Position, collisionObjects, enemies);
+                player.Position = new Vector2(player.Position.X, player.Position.Y + player.Velocity.Y * deltaTime);
+                player.UpdateBounds();
+                collisionDetected = false;
+                foreach (Collision collisionObject in collisionObjects)
+                {
+                    if (Collision.Collides(player.Bounds, collisionObject.Bounds))
+                    {
+                        collisionDetected = true;
+                        break;
+                    }
+                }
 
-    foreach (Projectile projectile in projectiles.ToList())
-    {  
-      if (Collision.CircleCircleCollision(enemy.Bounds, projectile.Bounds))
-      {
-        enemy.TakeDamage(player.DamagePerShot, player);
-        projectiles.Remove(projectile);
-        break;
-      }
-    }
+                if (collisionDetected)
+                {
+                    player.Position = new Vector2(player.Position.X, previousPosition.Y);
+                    player.UpdateBounds();
+                }
+            }
 
-    if (Collision.CircleCircleCollision(player.Bounds, enemy.Bounds))
-    {
-      player.TakeDamage(enemy.Damage);
-      if(player.IsDead == true)
-      {
-        currentState = GameState.GameOver;
-        return;
-      }
-    }
-  }
+            foreach (Projectile projectile in projectiles.ToList())
+            {
+                projectile.Update(deltaTime);
+                foreach (Collision collisionObject in collisionObjects)
+                {
+                    if (Collision.Collides(projectile.Bounds, collisionObject.Bounds))
+                    {
+                        projectiles.Remove(projectile);
+                        break;
+                    }
+                }
+            }
 
-  float maxDistanceSquared = Projectile.DespawnDistance * Projectile.DespawnDistance;
-  projectiles.RemoveAll(p => Vector2.DistanceSquared(p.Position, player.Position) > maxDistanceSquared);
+            foreach (Enemy enemy in enemies.ToList())
+            {
+                enemy.Update(gameTime, player.Position, collisionObjects, enemies);
 
-  camera.Follow(player.Position);
-}
+                foreach (Projectile projectile in projectiles.ToList())
+                {
+                    if (Collision.CircleCircleCollision(enemy.Bounds, projectile.Bounds))
+                    {
+                        enemy.TakeDamage(player.DamagePerShot, player);
+                        projectiles.Remove(projectile);
+                        break;
+                    }
+                }
+
+                if (Collision.CircleCircleCollision(player.Bounds, enemy.Bounds))
+                {
+                    player.TakeDamage(enemy.Damage);
+                    if(player.IsDead == true)
+                    {
+                        currentState = GameState.GameOver;
+                        return;
+                    }
+                }
+            }
+
+            float maxDistanceSquared = Projectile.DespawnDistance * Projectile.DespawnDistance;
+            projectiles.RemoveAll(p => Vector2.DistanceSquared(p.Position, player.Position) > maxDistanceSquared);
+
+            camera.Follow(player.Position);
+        }
 ```
 
 - **UpdatePlaying** - trata de verificar colisões e atualizar o jogo
+
+```C#
+public static void UpdatePaused(GameTime gameTime)
+        {
+            // Handle paused state input
+            KeyboardState keyboardState = Keyboard.GetState();
+
+            if (keyboardState.IsKeyDown(Keys.P) && !wasPKeyPressed)
+            {
+                isPaused = !isPaused; // Toggle the pause state
+                currentState = isPaused ? GameState.Paused : GameState.Playing; // Update game state
+            }
+            wasPKeyPressed = keyboardState.IsKeyDown(Keys.P);
+        }
+```
+
+- **UpdatePaused** - trata de verificar se o jogo é pausado e se o jogador continua.
 
 ```C#
 public static void UpdateGameOver(GameTime gameTime)
@@ -608,140 +642,164 @@ public static void UpdateGameOver(GameTime gameTime)
 - **UpdateGameOver** - atualiza o jogo para voltar ao *Main Menu*.
 
 ```C#
-public static void DrawMainMenu(SpriteBatch spriteBatch, Texture2D main_menu_background, Texture2D logo, Texture2D enterKeyTexture, SpriteFont menuFont, GraphicsDevice graphicsDevice)
-{
-  // Calculate the center position of the screen
-  Vector2 screenCenter = new Vector2(graphicsDevice.Viewport.Width / 2f, graphicsDevice.Viewport.Height / 2f);
+public static void UpdateWin(GameTime gameTime)
+        {
+            // Handle game over input and transitions
+            KeyboardState keyboardState = Keyboard.GetState();
 
-  // Calculate the scaled dimensions of the Enter key texture
-  float scaledEnterKeyWidth = enterKeyTexture.Width * Globals.texture_scale_factor;
-  float scaledEnterKeyHeight = enterKeyTexture.Height * Globals.texture_scale_factor;
+            if (keyboardState.IsKeyDown(Keys.Enter) && !wasEnterKeyPressed)
+            {
+                wasEnterKeyPressed = true;
+                currentState = GameState.MainMenu;
+            }
+        }
+```
 
-  // Define the vertical spacing between the logo and the text
-  float verticalSpacing = 80f;
+- **UpdateWin** - verifica se o jogador ganha.
 
-  // Calculate the total height of the logo, text, and Enter key texture
-  float totalHeight = logo.Height + verticalSpacing + Math.Max(menuFont.LineSpacing, scaledEnterKeyHeight);
+```C#
+public static void DrawMainMenu(SpriteBatch spriteBatch, Texture2D main_menu_background, Texture2D logo, Texture2D enterKeyTexture, SpriteFont menuFont, GraphicsDevice graphicsDevice, GameTime gameTime)
+        {
+            // Calculate the center position of the screen
+            Vector2 screenCenter = new Vector2(graphicsDevice.Viewport.Width / 2f, graphicsDevice.Viewport.Height / 2f);
 
-  // Calculate the starting position to center the group vertically
-  float startY = screenCenter.Y - totalHeight / 2f;
+            // Calculate the scaled dimensions of the Enter key texture
+            float scaledEnterKeyWidth = enterKeyTexture.Width * Globals.texture_scale_factor;
+            float scaledEnterKeyHeight = enterKeyTexture.Height * Globals.texture_scale_factor;
 
-  // Calculate the position of the logo (centered horizontally)
-  Vector2 logoPosition = new Vector2(screenCenter.X - (logo.Width / 2), startY);
+            // Define the vertical spacing between the logo and the text
+            float verticalSpacing = 80f;
 
-  // Calculate the width of the "Press" text and Enter key texture combined
-  float pressTextWidth = menuFont.MeasureString("Press ").X;
-  float totalTextWidth = pressTextWidth + scaledEnterKeyWidth + (menuFont.MeasureString(" to Start").X);
+            // Calculate the total height of the logo, text, and Enter key texture
+            float totalHeight = logo.Height + verticalSpacing + Math.Max(menuFont.LineSpacing, scaledEnterKeyHeight);
 
-  // Calculate the starting position to center the group horizontally
-  float startX = screenCenter.X - totalTextWidth / 2f;
+            // Calculate the starting position to center the group vertically
+            float startY = screenCenter.Y - totalHeight / 2f;
 
-  // Calculate the position of the "Press" text (centered horizontally)
-  Vector2 pressTextPosition = new Vector2(startX, logoPosition.Y + logo.Height + verticalSpacing);
+            // Calculate the position of the logo (centered horizontally)
+            Vector2 logoPosition = new Vector2(screenCenter.X - (logo.Width / 2), startY);
 
-  // Calculate the position of the Enter key texture (centered horizontally)
-  Vector2 enterKeyPosition = new Vector2(pressTextPosition.X + pressTextWidth, pressTextPosition.Y);
+            // Calculate the width of the "Press" text and Enter key texture combined
+            float pressTextWidth = menuFont.MeasureString("Press ").X;
+            float totalTextWidth = pressTextWidth + scaledEnterKeyWidth + (menuFont.MeasureString(" to Start").X);
 
-  // Draw the background image stretched to fit the screen
-  spriteBatch.Draw(main_menu_background, new Rectangle(0, 0, graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height), Color.White);
+            // Calculate the starting position to center the group horizontally
+            float startX = screenCenter.X - totalTextWidth / 2f;
 
-  // Draw the logo
-  spriteBatch.Draw(logo, logoPosition, Color.White);
+            // Calculate the position of the "Press" text (centered horizontally)
+            Vector2 pressTextPosition = new Vector2(startX, logoPosition.Y + logo.Height + verticalSpacing);
 
-  // Draw the "Press" text
-  spriteBatch.DrawString(menuFont, "Press ", pressTextPosition, Color.White);
+            // Calculate the position of the Enter key texture (centered horizontally)
+            Vector2 enterKeyPosition = new Vector2(pressTextPosition.X + pressTextWidth, pressTextPosition.Y);
 
-  // Draw the Enter key texture
-  spriteBatch.Draw(enterKeyTexture, enterKeyPosition, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+            // Draw the background image stretched to fit the screen
+            spriteBatch.Draw(main_menu_background, new Rectangle(0, 0, graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height), Color.White);
 
-  // Draw the " to Start" text
-  spriteBatch.DrawString(menuFont, " to Start", new Vector2(enterKeyPosition.X + scaledEnterKeyWidth, pressTextPosition.Y), Color.White);
-}
+            // Draw the logo
+            spriteBatch.Draw(logo, logoPosition, Color.White);
+
+            // Calculate the alpha value for the fade effect
+            Color fadeColor = new Color(1f, 1f, 1f, fadeTimer);
+
+            // Draw the "Press" text with fade effect
+            spriteBatch.DrawString(menuFont, "Press ", pressTextPosition, fadeColor);
+
+            // Draw the Enter key texture with fade effect
+            spriteBatch.Draw(enterKeyTexture, enterKeyPosition, null, fadeColor, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+
+            // Draw the " to Start" text with fade effect
+            spriteBatch.DrawString(menuFont, " to Start", new Vector2(enterKeyPosition.X + scaledEnterKeyWidth, pressTextPosition.Y), fadeColor);
+        }
 ```
 
 - **DrawMainMenu** - dá ao jogador uma representação visual do *Main Menu*.
 
 ```C#
 public static void DrawPlaying(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, List<Projectile> projectiles)
-{
-  Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
-  graphicsDevice.Clear(backgroundColor);
+        {
+            if (!player.IsDead)
+            {
+                Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
+                graphicsDevice.Clear(backgroundColor);
 
-  // Begin drawing with camera's transform matrix
-  spriteBatch.Begin(transformMatrix: camera.TransformMatrix, samplerState: SamplerState.PointClamp);
+                // Begin drawing with camera's transform matrix
+                spriteBatch.Begin(transformMatrix: camera.TransformMatrix, samplerState: SamplerState.PointClamp);
 
-  // Draw the tile map
-  for (int x = 0; x < Globals.MapWidth; x++)
-  {
-    for (int y = 0; y < Globals.MapHeight; y++)
-    {
-      Vector2 position = new Vector2(x * Globals.TileWidth * Globals.texture_scale_factor, y * Globals.TileHeight * Globals.texture_scale_factor);
+                // Draw the tile map
+                for (int x = 0; x < Globals.MapWidth; x++)
+                {
+                    for (int y = 0; y < Globals.MapHeight; y++)
+                    {
+                        Vector2 position = new Vector2(x * Globals.TileWidth * Globals.texture_scale_factor, y * Globals.TileHeight * Globals.texture_scale_factor);
 
-      int tileType = tileMap[x, y];
+                        int tileType = tileMap[x, y];
 
-      Texture2D tileTexture = GetTextureForTileType(tileType, x, y);
+                        Texture2D tileTexture = GetTextureForTileType(tileType, x, y);
 
-      // Draw the tile with scaling applied
-      spriteBatch.Draw(tileTexture, position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+                        // Draw the tile with scaling applied
+                        spriteBatch.Draw(tileTexture, position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
 
-      if (tileType == 3 && playerSpawn == false) // Assuming tileType 3 represents the tile where the player should be drawn
-      {
-        playerStartPosition = new Vector2(position.X + 1, position.Y);
-        // Calculate player position on top of this tile
-        player.Position = new Vector2(position.X + 1, position.Y);
-        playerSpawn = true;
-      }
-    }
-  }
+                        if (tileType == 3 && playerSpawn == false) // Assuming tileType 3 represents the tile where the player should be drawn
+                        {
+                            playerStartPosition = new Vector2(position.X + 1, position.Y);
+                            // Calculate player position on top of this tile
+                            player.Position = new Vector2(position.X + 1, position.Y);
+                            playerSpawn = true;
+                        }
+                    }
+                }
 
-  // Draw the player
-  player.Draw(spriteBatch);
+                // Draw the player
+                player.Draw(spriteBatch);
 
-  foreach (Projectile projectile in projectiles)
-  {
-    projectile.Draw(spriteBatch);
-  }
+                foreach (Projectile projectile in projectiles)
+                {
+                    projectile.Draw(spriteBatch);
+                }
 
-  // Draw enemies
-  foreach (Enemy enemy in enemies)
-  {
-    enemy.Draw(spriteBatch);
-  }
+                // Draw enemies
+                foreach (Enemy enemy in enemies)
+                {
+                    enemy.Draw(spriteBatch);
+                }
 
-  spriteBatch.End();
+                spriteBatch.End();
 
-  // Draw debug menu if visible
-  if (Globals.debugMenuVisible)
-  {
-    DrawDebugMenu(spriteBatch, defaultFont, collisionObjects, graphicsDevice, player, projectiles, camera, enemies);
-  }
+                // Draw debug menu if visible
+                if (Globals.debugMenuVisible)
+                {
+                    DrawDebugMenu(spriteBatch, defaultFont, collisionObjects, graphicsDevice, player, projectiles, camera, enemies);
+                }
 
-  // Begin a new sprite batch for UI elements
-  spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+                // Begin a new sprite batch for UI elements
+                spriteBatch.Begin(samplerState: SamplerState.PointClamp);
 
-  // Draw the timer
-  int minutes = (int)(remainingTime / 60);
-  int seconds = (int)(remainingTime % 60);
-  string timerText = $"{minutes:D2}:{seconds:D2}";
+                // Draw the timer
+                int minutes = (int)(remainingTime / 60);
+                int seconds = (int)(remainingTime % 60);
+                string timerText = $"{minutes:D2}:{seconds:D2}";
 
-  // Measure the width of the text
-  Vector2 textSize = Game1.defaultFont.MeasureString(timerText);
+                // Measure the width of the text
+                Vector2 textSize = Game1.defaultFont.MeasureString(timerText);
 
-  // Calculate the position to center the text on the X axis
-  float xPosition = (graphicsDevice.Viewport.Width - textSize.X) / 2;
-  Vector2 position_timer = new Vector2(xPosition, 50);
+                // Calculate the position to center the text on the X axis
+                float xPosition = (graphicsDevice.Viewport.Width - textSize.X) / 2;
+                Vector2 position_timer = new Vector2(xPosition, 50);
 
-  // Draw the centered text
-  spriteBatch.DrawString(timerFont, timerText, position_timer, Color.White);
+                // Draw the centered text
+                spriteBatch.DrawString(timerFont, timerText, position_timer, Color.White);
 
-  string scoreText = $"{player.Score}";
-  Vector2 position_score = new Vector2(50, 50);
+                string scoreText = $"{player.Score}";
+                Vector2 position_score = new Vector2(50, 50);
 
-  // Draw the centered text
-  spriteBatch.DrawString(timerFont, scoreText, position_score, Color.White);
+                Globals.LastRecordedScore = player.Score;
 
-  spriteBatch.End();
-}
+                // Draw the centered text
+                spriteBatch.DrawString(timerFont, scoreText, position_score, Color.White);
+
+                spriteBatch.End();
+            }
+        }
 ```
 
 - **DrawPlaying** - gera o conteúdo do jogo para o jogador podr ver.
@@ -765,20 +823,75 @@ public static void DrawPlaying(SpriteBatch spriteBatch, GraphicsDevice graphicsD
 
 ```C#
 public static void DrawGameOver(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice)
-{
-  spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-  string text = "Game Over. Press Enter to Return to Main Menu";
-  Vector2 textSize = timerFont.MeasureString(text);
-  float xPosition = (graphicsDevice.Viewport.Width - textSize.X) / 2;
-  float yPosition = (graphicsDevice.Viewport.Height - textSize.Y) / 2;
-  spriteBatch.DrawString(timerFont, text, new Vector2(xPosition, yPosition), Color.White);
+        {
+            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            spriteBatch.Draw(game_over_background, new Rectangle(0, 0, graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height), Color.White);
 
-  // End drawing with the blur effect
-  spriteBatch.End();
-}
+            string text1 = "GAME OVER";
+            string text2 = "Press Enter to Return to Main Menu";
+            string scoreText = $"Score: {Globals.LastRecordedScore}";
+
+            Vector2 scoreTextSize = timerFont.MeasureString(scoreText);
+            Vector2 textTextSize = headerFont.MeasureString(text1);
+            Vector2 text2TextSize = timerFont.MeasureString(text2);
+
+            float totalHeight = scoreTextSize.Y + 200 + textTextSize.Y + text2TextSize.Y + 200; // Total height of both strings plus the spacing
+
+            // Calculate the starting Y position to center the group
+            float startY = (graphicsDevice.Viewport.Height - totalHeight) / 2;
+
+            // Draw the score text
+            float xPosition = (graphicsDevice.Viewport.Width - scoreTextSize.X) / 2;
+            spriteBatch.DrawString(timerFont, scoreText, new Vector2(xPosition, startY), Color.White);
+
+            // Draw the game over text
+            xPosition = (graphicsDevice.Viewport.Width - textTextSize.X) / 2;
+            spriteBatch.DrawString(headerFont, text1, new Vector2(xPosition, startY + scoreTextSize.Y + 200), Color.White);
+
+            xPosition = (graphicsDevice.Viewport.Width - text2TextSize.X) / 2;
+            spriteBatch.DrawString(timerFont, text2, new Vector2(xPosition, startY + scoreTextSize.Y + 400), Color.White);
+
+            spriteBatch.End();
+        }
 ```
 
 - **DrawGameOver** - apresenta ao jogador o ecra *Game Over*.
+
+```C#
+public static void DrawWin(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice)
+        {
+            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            spriteBatch.Draw(win_background, new Rectangle(0, 0, graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height), Color.White);
+
+            string text1 = "YOU SURVIVED!";
+            string text2 = "Press Enter to Return to Main Menu";
+            string scoreText = $"Score: {Globals.LastRecordedScore}";
+
+            Vector2 scoreTextSize = timerFont.MeasureString(scoreText);
+            Vector2 textTextSize = headerFont.MeasureString(text1);
+            Vector2 text2TextSize = timerFont.MeasureString(text2);
+
+            float totalHeight = scoreTextSize.Y + 200 + textTextSize.Y + text2TextSize.Y + 200; // Total height of both strings plus the spacing
+
+            // Calculate the starting Y position to center the group
+            float startY = (graphicsDevice.Viewport.Height - totalHeight) / 2;
+
+            // Draw the score text
+            float xPosition = (graphicsDevice.Viewport.Width - scoreTextSize.X) / 2;
+            spriteBatch.DrawString(timerFont, scoreText, new Vector2(xPosition, startY), Color.White);
+
+            // Draw the rest of text
+            xPosition = (graphicsDevice.Viewport.Width - textTextSize.X) / 2;
+            spriteBatch.DrawString(headerFont, text1, new Vector2(xPosition, startY + scoreTextSize.Y + 200), Color.White);
+
+            xPosition = (graphicsDevice.Viewport.Width - text2TextSize.X) / 2;
+            spriteBatch.DrawString(timerFont, text2, new Vector2(xPosition, startY + scoreTextSize.Y + 400), Color.White);
+
+            spriteBatch.End();
+        }
+```
+
+- **DrawWin** - Apresenta ao jogador quando ele ganha
 
 ```C#
 public static void StartGame(GraphicsDevice graphicsDevice)
@@ -803,6 +916,23 @@ public static void StartGame(GraphicsDevice graphicsDevice)
 ```
 
 - **StartGame** - inicializa o jogo quando o jogador começa.
+
+```C#
+public static void ResetGame(GraphicsDevice graphicsDevice, List<Projectile> projectiles, List<Enemy> enemies)
+        {
+            player = new Player(playerStartPosition, graphicsDevice);
+            projectiles.Clear();
+            enemies.Clear();
+            remainingTime = initialTime;
+            timerRunning = true;
+            playerSpawn = false;
+            isPaused = false;
+
+            SpawnEnemies(20);
+        }
+```
+
+- **ResetGame** - Dá reset do jogo de forma a poder começar de novo.
 
 ```C#
 public static void SpawnEnemies(int count)
@@ -867,6 +997,85 @@ private static bool IsValidSpawnTile(int x, int y)
 ```
 
 - **IsValidSpawn** - verifica se o espaço está vazio para adicionar inimigos.
+
+---
+
+### SpriteAnimation.cs
+
+Esta classe está encarregue de desenhar e rodar as animações do jogo
+
+```C#
+private Texture2D spriteSheet;
+        private int frameWidth;
+        private int frameHeight;
+        private int frameStart;
+        private int frameEnd;
+        private float frameTime;
+        private int currentFrameIndex;
+        private float timer;
+
+        public SpriteAnimation(Texture2D spriteSheet, int frameWidth, int frameHeight, int frameStart, int frameEnd, float frameTime)
+        {
+            this.spriteSheet = spriteSheet;
+            this.frameWidth = frameWidth;
+            this.frameHeight = frameHeight;
+            this.frameStart = frameStart;
+            this.frameEnd = frameEnd;
+            this.frameTime = frameTime;
+            this.currentFrameIndex = frameStart;
+            this.timer = 0f;
+        }
+```
+
+Variáveis e construtores usados para a classe.
+
+```C#
+public void Update(float deltaTime)
+        {
+            timer += deltaTime;
+
+            if (timer > frameTime)
+            {
+                currentFrameIndex = (currentFrameIndex + 1) % (frameEnd - frameStart + 1) + frameStart;
+                timer = 0f;
+            }
+        }
+```
+
+- **Update** - vai atualizando o jogo enquanto está a ser jogado.
+
+```C#
+public void Draw(SpriteBatch spriteBatch, Vector2 position, bool isPlayer, float Rotation, Vector2 Origin, bool isEnemy)
+        {
+            int frameX = currentFrameIndex % (spriteSheet.Width / frameWidth);
+            int frameY = currentFrameIndex / (spriteSheet.Width / frameWidth);
+            Rectangle sourceRectangle = new Rectangle(frameX * frameWidth, frameY * frameHeight, frameWidth, frameHeight);
+            if (isPlayer)
+            {
+                position.X -= 48;
+                position.Y -= 48;
+                if (Player.IsFacingLeft)
+                {
+                    spriteBatch.Draw(spriteSheet, position, sourceRectangle, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.FlipHorizontally, 0f);
+                } else
+                {
+                    spriteBatch.Draw(spriteSheet, position, sourceRectangle, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+                }
+                
+            } else if (isEnemy)
+            {
+                spriteBatch.Draw(spriteSheet, position, sourceRectangle, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+            } 
+            else
+            {
+                position.X -= 16;
+                position.Y -= 16;
+                spriteBatch.Draw(spriteSheet, position, sourceRectangle, Color.White, Rotation, Origin, 1.5f, SpriteEffects.None, 0f);
+            }
+        }
+```
+
+- **Draw** - desenha os sprites.
 
 ---
 
@@ -1305,35 +1514,45 @@ Esta classe está em carregue da criação e interação dos projéteis do jogad
 
 ```C#
 public Vector2 Position { get; set; }
-public Vector2 Velocity { get; set; }
-public static int DespawnDistance { get; set; }
-public Texture2D Texture { get; set; }
-public Circle Bounds { get; private set; } // Hitbox for the projectile
+        public Vector2 Velocity { get; set; }
+        public static int DespawnDistance { get; set; }
+        public Texture2D Texture { get; set; }
+        public Circle Bounds { get; private set; } // Hitbox for the projectile
+        public SpriteAnimation Animation { get; set; }
+        public float Rotation { get; private set; } // Rotation angle in radians
+        public Vector2 Origin { get; private set; } // Origin vector to keep projectile centered in initial position after rotation
 
-public Projectile(Texture2D texture, Vector2 position, Vector2 velocity)
-{
-  Texture = texture;
-  Position = position;
-  Velocity = velocity;
+        public Projectile(Texture2D texture, Vector2 position, Vector2 velocity, Vector2 directionToCursor)
+        {
+            Texture = texture;
+            Position = position;
+            Velocity = velocity;
 
-  DespawnDistance = 3000;
+            // Calculate rotation angle
+            Rotation = (float)Math.Atan2(-directionToCursor.Y, -directionToCursor.X);
 
-  // Define bounds with a radius matching half of the projectile texture's width
-  Bounds = new Circle(position, texture.Width / 2);
-}
+            DespawnDistance = 3000;
+
+            // Define bounds with a radius matching half of the projectile texture's width
+            Bounds = new Circle(position, texture.Width);
+
+            Animation = new SpriteAnimation(Game1.attackSpritesheet, 32, 32, 0, 3, 0.1f);
+        }
 ```
 
 Criação da variável que representará o projétil do jogador.
 
 ```C#
-public void Update(float elapsedSeconds)
-{
-  // Move the projectile based on its velocity and the elapsed time
-  Position += Velocity * elapsedSeconds;
+public void Update(float deltaTime)
+        {
+            // Move the projectile based on its velocity and the elapsed time
+            Position += Velocity * deltaTime;
 
-  // Update the position of the bounds
-  Bounds = new Circle(Position, Bounds.Radius);
-}
+            // Update the position of the bounds
+            Bounds = new Circle(Position, Bounds.Radius);
+
+            Animation.Update(deltaTime); // Update animation frame
+        }
 ```
 
 - **Update** - atualiza a posição dos projéteis.
@@ -1349,10 +1568,11 @@ public int GetBoundsRadius()
 
 ```C#
 public void Draw(SpriteBatch spriteBatch)
-{
-  // Draw the projectile's texture centered at the projectile's position
-  spriteBatch.Draw(Texture, Position - new Vector2(Texture.Width / 2, Texture.Height / 2), Color.White);
-}
+        {
+            Origin = new Vector2(Texture.Width, Texture.Height);
+            // Draw the projectile's texture centered at the projectile's position
+            Animation.Draw(spriteBatch, Position, false, Rotation, Origin, false);
+        }
 ```
 
 - **Draw** - cria o projétil de forma a ser vísivel ao jogador.
@@ -1364,118 +1584,127 @@ public void Draw(SpriteBatch spriteBatch)
 Está encarregue de criar os inímigos assim como outras funções.
 
 ```C#
-public Vector2 Position { get; set; }
-public Texture2D Texture { get; set; }
-public Circle Bounds { get; private set; } // Hitbox for the enemy
-public int Health { get; private set; }
-public int Damage { get; private set; }
+// Enemy properties
+    public Vector2 Position { get; set; }
+    public Texture2D Texture { get; set; }
+    public Circle Bounds { get; private set; } // Hitbox for the enemy
+    public int Health { get; private set; }
+    public int Damage { get; private set; }
+    public SpriteAnimation Animation { get; set; }
 
-private float speed;
+    private float speed;
 
-// Constructor
-public Enemy(Texture2D texture, Vector2 position)
-{
-  Texture = texture;
-  Position = position;
+    // Constructor
+    public Enemy(Texture2D texture, Vector2 position)
+    {
+        Texture = texture;
+        Position = position;
 
-  // Calculate the hitbox radius based on the texture scale factor
-  float scaleFactor = Globals.texture_scale_factor;
-  float scaledRadius = texture.Width * scaleFactor * 0.5f;
+        // Calculate the hitbox radius based on the texture scale factor
+        float scaleFactor = Globals.texture_scale_factor;
+        float scaledRadius = texture.Width/4 * scaleFactor * 0.5f;
 
-  // Define bounds with the scaled radius
-  Bounds = new Circle(position + new Vector2(scaledRadius), scaledRadius);
-  Health = Globals.default_enemy_hp; // Set initial health
-  speed = Globals.default_enemy_speed; // Speed of the enemy
-  Damage = Globals.default_enemy_damage;
-}
+        // Define bounds with the scaled radius
+        Bounds = new Circle(position + new Vector2(scaledRadius), scaledRadius);
+        Health = Globals.default_enemy_hp; // Set initial health
+        speed = Globals.default_enemy_speed; // Speed of the enemy
+        Damage = Globals.default_enemy_damage;
+
+        Animation = new SpriteAnimation(Game1.skeletonSpritesheet, 16, 16, 0, 3, 0.1f);
+    }
 ```
 
 Criação das propriedades do inimigo.
 
 ```C#
 public void Update(GameTime gameTime, Vector2 playerPosition, List<Collision> collisionObjects, List<Enemy> otherEnemies)
-{
-  if(Game1.currentState == Game1.GameState.Playing)
-  {
-    // Calculate direction towards player
-    Vector2 direction = playerPosition - Position;
-    direction.Normalize();
-
-    // Calculate new position
-    Vector2 newPosition = Position + direction * speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-    // Check for potential collisions with walls
-    Circle newBounds = new Circle(newPosition + new Vector2(Bounds.Radius), Bounds.Radius);
-    foreach (var collisionObject in collisionObjects)
     {
-      if (Collision.Collides(newBounds, collisionObject.Bounds))
-      {
-        return; // If collision detected, do not move
-      }
-    }
-
-    // Check for potential collisions with other enemies
-    foreach (var enemy in otherEnemies)
-    {
-      if (enemy == this) continue;
-
-      if (Collision.CircleCircleCollision(newBounds, enemy.Bounds))
-      {
-        // Calculate repulsion vector
-        Vector2 repulsion = newPosition - enemy.Position;
-        float distance = repulsion.Length();
-        if (distance == 0)
+        if(Game1.currentState == Game1.GameState.Playing)
         {
-          // If the enemies are exactly at the same position, create a small random vector
-          repulsion = new Vector2(0.1f, 0.1f);
-          distance = repulsion.Length();
+            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Calculate direction towards player
+            Vector2 direction = playerPosition - Position;
+            direction.Normalize();
+
+            // Calculate new position
+            Vector2 newPosition = Position + direction * speed * deltaTime;
+
+            // Check for potential collisions with walls
+            Circle newBounds = new Circle(newPosition + new Vector2(Bounds.Radius), Bounds.Radius);
+            foreach (var collisionObject in collisionObjects)
+            {
+                if (Collision.Collides(newBounds, collisionObject.Bounds))
+                {
+                    return; // If collision detected, do not move
+                }
+            }
+
+            // Check for potential collisions with other enemies
+            foreach (var enemy in otherEnemies)
+            {
+                if (enemy == this) continue;
+
+                if (Collision.CircleCircleCollision(newBounds, enemy.Bounds))
+                {
+                    // Calculate repulsion vector
+                    Vector2 repulsion = newPosition - enemy.Position;
+                    float distance = repulsion.Length();
+                    if (distance == 0)
+                    {
+                        // If the enemies are exactly at the same position, create a small random vector
+                        repulsion = new Vector2(0.1f, 0.1f);
+                        distance = repulsion.Length();
+                    }
+
+                    // Normalize repulsion vector and calculate overlap
+                    repulsion.Normalize();
+                    float overlap = Bounds.Radius + enemy.Bounds.Radius - distance;
+
+                    // Adjust the newPosition based on the overlap
+                    newPosition += repulsion * overlap * 0.5f;
+                }
+            }
+
+            // Update position and bounds
+            Position = newPosition;
+            Bounds = new Circle(Position + new Vector2(Bounds.Radius), Bounds.Radius);
+
+            Animation.Update(deltaTime); // Update animation frame
         }
-
-        // Normalize repulsion vector and calculate overlap
-        repulsion.Normalize();
-        float overlap = Bounds.Radius + enemy.Bounds.Radius - distance;
-
-        // Adjust the newPosition based on the overlap
-        newPosition += repulsion * overlap * 0.5f;
-      }
     }
-
-    // Update position and bounds
-    Position = newPosition;
-    Bounds = new Circle(Position + new Vector2(Bounds.Radius), Bounds.Radius);
-  }
-}
 ```
 
 - **Update** - atualiza a posição e colisão do inimigo.
 
 ```C#
- public void TakeDamage(int damage, Player player)
-{
-  Health -= damage;
-  if (Health <= 0)
-  {
-    // Handle enemy death (e.g., remove from the game)
-    Health = 0; // Ensure health doesn't go negative
-    // Remove the enemy from the game
-    // For example, you can remove it from a list of active enemies
-    // Assuming enemiesList is a list containing all active enemies
-    if (Game1.enemies.Contains(this))
+public void TakeDamage(int damage, Player player)
     {
-      Game1.enemies.Remove(this);
-      player.IncrementScore(100);
-    }
-  }
-}
+        Health -= damage;
+        if (Health <= 0)
+        {
+            // Handle enemy death (e.g., remove from the game)
+            Health = 0; // Ensure health doesn't go negative
+            // Remove the enemy from the game
+            // For example, you can remove it from a list of active enemies
+            // Assuming enemiesList is a list containing all active enemies
+            if (Game1.enemies.Contains(this))
+            {
+                Game1.enemies.Remove(this);
+                player.IncrementScore(100);
+            }
+        }
 ```
 
 - ***TakeDamage*** - atualiza a vida do inimigo assim como o estado deles (vivos ou mortos).
 
 ```C#
 public void Draw(SpriteBatch spriteBatch)
-{
-  spriteBatch.Draw(Texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
-}
+    {
+        Vector2 newPosition = Position;
+        Animation.Draw(spriteBatch, newPosition, false, 0f, Vector2.Zero, true);
+        //spriteBatch.Draw(Texture, Position, null, Color.White, 0f, Vector2.Zero, Globals.texture_scale_factor, SpriteEffects.None, 0f);
+    }
 ```
 
 - **Draw** - apresenta o inimigo de forma visível ao jogador.
@@ -1485,91 +1714,107 @@ public void Draw(SpriteBatch spriteBatch)
 ### Game1.cs
 
 ```C#
-private GraphicsDeviceManager _graphics;
-private SpriteBatch _spriteBatch;
+        private GraphicsDeviceManager _graphics;
+        private SpriteBatch _spriteBatch;
 
-public static int[,] tileMap; // Variable to store the loaded tile map
+        public static int[,] tileMap; // Variable to store the loaded tile map
 
-public static Texture2D main_menu_background;
-public static Texture2D logo;
-public static Texture2D enterKeyTexture;
-public static Texture2D floor_tile;
-public static Texture2D floor_tile2;
-public static Texture2D floor_tile3;
-public static Texture2D floor_tile4;
-public static Texture2D wall_top_tile;
-public static Texture2D square_player_spawn;
-public static Texture2D skeleton_texture;
-public static Texture2D player_sprite;
-public static Texture2D empty_tile;
-public static Texture2D projectileTexture;
-private Texture2D customCursorTexture;
-public static float timeSinceLastShot = 0f;
+        public static Texture2D main_menu_background;
+        public static Texture2D game_over_background;
+        public static Texture2D win_background;
+        public static Texture2D logo;
+        public static Texture2D enterKeyTexture;
+        public static Texture2D floor_tile;
+        public static Texture2D floor_tile2;
+        public static Texture2D floor_tile3;
+        public static Texture2D floor_tile4;
+        public static Texture2D wall_top_tile;
+        public static Texture2D square_player_spawn;
+        public static Texture2D player_sprite;
+        public static Texture2D empty_tile;
+        public static Texture2D projectileTexture;
+        private Texture2D customCursorTexture;
+        public static float timeSinceLastShot = 0f;
 
-public static Camera camera;
+        public static Camera camera;
 
-public static SpriteFont defaultFont;
-public static SpriteFont timerFont;
+        public static SpriteFont defaultFont;
+        public static SpriteFont timerFont;
+        public static SpriteFont headerFont;
 
-public static List<Collision> collisionObjects;
+        public static List<Collision> collisionObjects;
 
-public List<Projectile> projectiles = new List<Projectile>();
-public static List<Enemy> enemies = new List<Enemy>();
+        public List<Projectile> projectiles = new List<Projectile>();
+        public static List<Enemy> enemies = new List<Enemy>();
 
-public static Player player;
+        public static Player player;
 
-public static double initialTime = Globals.timer_in_seconds; // Initial time in seconds
-public static double remainingTime;
-public static bool timerRunning;
+        public static Texture2D playerSpriteSheet;
+        public static Texture2D skeletonSpritesheet;
+        public static Texture2D attackSpritesheet;
 
-public static Vector2 playerStartPosition;
+        public static double initialTime = Globals.timer_in_seconds; // Initial time in seconds
+        public static double remainingTime;
+        public static bool timerRunning;
 
-public static bool playerSpawn = false;
+        public static Vector2 playerStartPosition;
 
-public static bool wasRKeyPressed = false;
-public static bool wasF3Pressed = false;
-public static bool wasPKeyPressed = false;
-public static bool wasEnterKeyPressed = false;
+        public static bool playerSpawn = false;
 
-public static bool isPaused = false;
+        public static bool wasRKeyPressed = false;
+        public static bool wasF3Pressed = false;
+        public static bool wasPKeyPressed = false;
+        public static bool wasEnterKeyPressed = false;
 
-public static GameState currentState;
+        public static float fadeTimer = 0f;
+        public static bool fadingIn = true;
+        public static float fadeSpeed = 0.8f; // Speed of the fade effect
 
-public static float elapsedTimeTotal = 0f;
+        public static bool isPaused = false;
 
-public static float spawnTimer = 0f; // Timer for enemy spawning
-public static float spawnInterval = 5f; // Interval in seconds between enemy spawns
+        public static GameState currentState;
 
-public enum GameState
-{
-  MainMenu,
-  Playing,
-  Paused,
-  GameOver
-}
+        public static float elapsedTimeTotal = 0f;
 
-public Game1()
-{
-  _graphics = new GraphicsDeviceManager(this);
-  Content.RootDirectory = "Content";
-  IsMouseVisible = true;
-  _graphics.IsFullScreen = true;
-  _graphics.PreferredBackBufferWidth = 1920;
-  _graphics.PreferredBackBufferHeight = 1080;
+        public static float spawnTimer = 0f; // Timer for enemy spawning
+        public static float spawnInterval = 5f; // Interval in seconds between enemy spawns
 
-  IsFixedTimeStep = false; // Remove FPS cap
-  _graphics.SynchronizeWithVerticalRetrace = false; // Disable vsync
+        public enum GameState
+        {
+            MainMenu,
+            Playing,
+            Paused,
+            GameOver,
+            Win
+        }
 
-  _graphics.ApplyChanges();
+        Song MainMenu;
+        Song Playing;
+        Song GameOver;
+        Song Win;
 
-  // LoadContent before initializing player object so the texture is loaded
-  LoadContent();
+        public Game1()
+        {
+            _graphics = new GraphicsDeviceManager(this);
+            Content.RootDirectory = "Content";
+            IsMouseVisible = true;
+            _graphics.IsFullScreen = true;
+            _graphics.PreferredBackBufferWidth = 1920;
+            _graphics.PreferredBackBufferHeight = 1080;
 
-  // Set initial game state
-  currentState = GameState.MainMenu;
+            IsFixedTimeStep = false; // Remove FPS cap
+            _graphics.SynchronizeWithVerticalRetrace = false; // Disable vsync
 
-  Utils.StartGame(GraphicsDevice);
-}
+            _graphics.ApplyChanges();
+
+            // LoadContent before initializing player object so the texture is loaded
+            LoadContent();
+
+            // Set initial game state
+            currentState = GameState.MainMenu;
+
+            Utils.StartGame(GraphicsDevice);
+        }
 ```
 
 Tudo qué preciso para iniciar o jogo assim como formas de identificar o estado jogo.
@@ -1592,89 +1837,174 @@ protected override void Initialize()
 
 ```C#
 protected override void LoadContent()
-{
-  _spriteBatch = new SpriteBatch(GraphicsDevice);
-  main_menu_background = Content.Load<Texture2D>("main_menu_background_blur");
-  logo = Content.Load<Texture2D>("logo");
-  enterKeyTexture = Content.Load<Texture2D>("pxkw_enter");
-  floor_tile = Content.Load<Texture2D>("floor_tile");
-  floor_tile2 = Content.Load<Texture2D>("floor_tile2");
-  floor_tile3 = Content.Load<Texture2D>("floor_tile3");
-  floor_tile4 = Content.Load<Texture2D>("floor_tile4");
-  wall_top_tile = Content.Load<Texture2D>("wall_top_tile");
-  square_player_spawn = Content.Load<Texture2D>("square_player_spawn");
-  empty_tile = Content.Load<Texture2D>("empty_tile");
-  player_sprite = Content.Load<Texture2D>("priest1_v1_1");
-  projectileTexture = Content.Load<Texture2D>("projectile");
-  skeleton_texture = Content.Load<Texture2D>("skeleton2_v2_1");
+        {
+            _spriteBatch = new SpriteBatch(GraphicsDevice);
+            main_menu_background = Content.Load<Texture2D>("main_menu_background_blur");
+            game_over_background = Content.Load<Texture2D>("game_over_background_blur");
+            win_background = Content.Load<Texture2D>("win_background_blur");
+            logo = Content.Load<Texture2D>("logo");
+            enterKeyTexture = Content.Load<Texture2D>("pxkw_enter");
+            floor_tile = Content.Load<Texture2D>("floor_tile");
+            floor_tile2 = Content.Load<Texture2D>("floor_tile2");
+            floor_tile3 = Content.Load<Texture2D>("floor_tile3");
+            floor_tile4 = Content.Load<Texture2D>("floor_tile4");
+            wall_top_tile = Content.Load<Texture2D>("wall_top_tile");
+            square_player_spawn = Content.Load<Texture2D>("square_player_spawn");
+            empty_tile = Content.Load<Texture2D>("empty_tile");
+            projectileTexture = Content.Load<Texture2D>("projectile");
 
-  defaultFont = Content.Load<SpriteFont>("TestFont");
-  timerFont = Content.Load<SpriteFont>("Timer");
+            defaultFont = Content.Load<SpriteFont>("TestFont");
+            timerFont = Content.Load<SpriteFont>("Timer");
+            headerFont = Content.Load<SpriteFont>("Header");
 
-  customCursorTexture = Content.Load<Texture2D>("cursor");
-}
+            customCursorTexture = Content.Load<Texture2D>("cursor");
+            
+            MainMenu = Content.Load<Song>("Main Menu Theme");
+            Playing = Content.Load<Song>("Playing");
+            GameOver = Content.Load<Song>("Game Over");
+            Win = Content.Load<Song>("Win");
+
+            playerSpriteSheet = Content.Load<Texture2D>("player_spritesheet");
+            attackSpritesheet = Content.Load<Texture2D>("attack_spritesheet");
+            skeletonSpritesheet = Content.Load<Texture2D>("skeleton_spritesheet");
+        }
 ```
 
 - **LoadContent** - carrega todo o ceonteúdo necessário para criar o jogo.
 
 ```C#
 protected override void Update(GameTime gameTime)
-{
-  float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        {
+            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-  if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-    Exit();
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+                Exit();
 
-  switch (currentState)
-  {
-    case GameState.MainMenu:
-      Utils.UpdateMainMenu(gameTime, GraphicsDevice);
-      break;
-    case GameState.Playing:
-      Utils.UpdatePlaying(gameTime, deltaTime, player, projectiles);
-      break;
-    case GameState.Paused:
-      Utils.UpdatePaused(gameTime);
-      break;
-    case GameState.GameOver:
-      Utils.UpdateGameOver(gameTime);
-      break;
-  }
+            KeyboardState keyboardState = Keyboard.GetState();
 
-  Utils.UpdateFPS(gameTime);
+            switch (currentState)
+            {
+                case GameState.MainMenu:
+                    if (fadingIn)
+                    {
+                        fadeTimer += deltaTime * fadeSpeed;
+                        if (fadeTimer >= 1f)
+                        {
+                            fadeTimer = 1f;
+                            fadingIn = false;
+                        }
+                    }
+                    else
+                    {
+                        fadeTimer -= deltaTime * fadeSpeed;
+                        if (fadeTimer <= 0f)
+                        {
+                            fadeTimer = 0f;
+                            fadingIn = true;
+                        }
+                    }
+                    if (MediaPlayer.Queue.ActiveSong != MainMenu)
+                    {
+                        MediaPlayer.Stop();
+                        MediaPlayer.IsRepeating = true;
+                        MediaPlayer.Volume = 0.4f;
+                        MediaPlayer.Play(MainMenu);
+                    }
+                    Utils.UpdateMainMenu(gameTime, GraphicsDevice);
+                    break;                
+                case GameState.Playing:
+                    if (MediaPlayer.Queue.ActiveSong != Playing)
+                    {
+                        MediaPlayer.Stop();
+                        MediaPlayer.IsRepeating = true;
+                        MediaPlayer.Volume = 0.4f;
+                        MediaPlayer.Play(Playing);
+                    }
+                    Utils.UpdatePlaying(gameTime, deltaTime, player, projectiles);
+                    break;
+                case GameState.Paused:
+                    Utils.UpdatePaused(gameTime);
+                    break;
+                case GameState.GameOver:
+                    if (MediaPlayer.Queue.ActiveSong != GameOver)
+                    {
+                        MediaPlayer.Stop();
+                        MediaPlayer.IsRepeating = true;
+                        MediaPlayer.Volume = 0.4f;
+                        MediaPlayer.Play(GameOver);
+                    }          
+                    Utils.UpdateGameOver(gameTime);
 
-  base.Update(gameTime);
-}
+                    if (keyboardState.IsKeyDown(Keys.Enter) && !wasEnterKeyPressed)
+                    {
+                        wasEnterKeyPressed = true;
+                        Utils.ResetGame(GraphicsDevice, projectiles, enemies);
+                        currentState = GameState.MainMenu;
+                    }
+                    break;
+                case GameState.Win:
+                    if (MediaPlayer.Queue.ActiveSong != Win)
+                    {
+                        MediaPlayer.Stop();
+                        MediaPlayer.IsRepeating = true;
+                        MediaPlayer.Volume = 0.4f;
+                        MediaPlayer.Play(Win);
+                    }
+                    Utils.UpdateWin(gameTime);
+
+                    if (keyboardState.IsKeyDown(Keys.Enter) && !wasEnterKeyPressed)
+                    {
+                        wasEnterKeyPressed = true;
+                        Utils.ResetGame(GraphicsDevice, projectiles, enemies);
+                        currentState = GameState.MainMenu;
+                    }
+                    break;
+            }
+
+            if (keyboardState.IsKeyUp(Keys.Enter))
+            {
+                wasEnterKeyPressed = false;
+            }
+
+            Utils.UpdateFPS(gameTime);
+
+            base.Update(gameTime);
+        }
 ```
 
 - **Update** - vai atualizando o estado do jogo.
 
 ```C#
 protected override void Draw(GameTime gameTime)
-{
-  Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
-  GraphicsDevice.Clear(backgroundColor);
+        {
+            Color backgroundColor = new Color(0x25, 0x13, 0x1A); // Hex: #25131A
+            GraphicsDevice.Clear(backgroundColor);
 
-  switch (currentState)
-  {
-    case GameState.MainMenu:
-      _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-      Utils.DrawMainMenu(_spriteBatch, main_menu_background, logo, enterKeyTexture, timerFont, GraphicsDevice);
-      _spriteBatch.End();
-      break;
-    case GameState.Playing:
-      Utils.DrawPlaying(_spriteBatch, GraphicsDevice, projectiles);
-      break;
-    case GameState.Paused:
-      Utils.DrawPaused(_spriteBatch, GraphicsDevice);
-      break;
-    case GameState.GameOver:
-      Utils.DrawGameOver(_spriteBatch, GraphicsDevice);
-      break;
-  }
+            switch (currentState)
+            {
+                case GameState.MainMenu:
+                    _spriteBatch.Begin(samplerState: SamplerState.PointClamp, blendState: BlendState.NonPremultiplied);
+                    Utils.DrawMainMenu(_spriteBatch, main_menu_background, logo, enterKeyTexture, timerFont, GraphicsDevice, gameTime);
+                    _spriteBatch.End();
+                    break;
+                case GameState.Playing:
+                    Utils.DrawPlaying(_spriteBatch, GraphicsDevice, projectiles);
+                    break;
+                case GameState.Paused:
+                    Utils.DrawPaused(_spriteBatch, GraphicsDevice);
+                    break;
+                case GameState.GameOver:
+                    Utils.DrawGameOver(_spriteBatch, GraphicsDevice);
+                    Utils.ResetGame(GraphicsDevice, projectiles, enemies);
+                    break;
+                case GameState.Win:
+                    Utils.DrawWin(_spriteBatch, GraphicsDevice);
+                    Utils.ResetGame(GraphicsDevice, projectiles, enemies);
+                    break;
+            }
 
-  base.Draw(gameTime);
-}
+            base.Draw(gameTime);
+        }
 ```
 
 - **Draw** - apresenta o jogo dependendo do seu estado
